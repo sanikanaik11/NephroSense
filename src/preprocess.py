@@ -25,7 +25,6 @@ CATEGORICAL_MAP = {
     "ane": {"yes": 1, "no": 0},
 }
 
-
 def _read_text_robust(path):
     with open(path, "rb") as f:
         raw = f.read()
