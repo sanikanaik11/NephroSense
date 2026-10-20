@@ -1,18 +1,36 @@
 """
-chatbot.py — NephroSense  (REPLACE existing)
-NephroBot — kidney + general health chatbot.
+chatbot.py — NephroSense NephroBot
+===================================
 
-LANGUAGE RULE (fixed): replies are in VERY SIMPLE ENGLISH by default.
-Hindi/Marathi is used ONLY if the patient themselves writes in Hindi/Marathi
-(Devanagari script or Hindi/Marathi words in English letters).
-The language is detected in code, not left to the small model to guess.
+HOW ANSWERS ARE RETRIEVED AND GENERATED
+-----------------------------------------
+1. LANGUAGE DETECTION (in Python, not the LLM)
+   Scoring: count Marathi-specific vs Hindi-specific Devanagari markers.
+   For romanised text: check word sets, but require >= 2 hits to avoid
+   false positives from short common words.
 
-Engines, first one that works wins:
-  1. Groq   (free API)   -> env GROQ_API_KEY
-  2. Gemini (free API)   -> env GEMINI_API_KEY
-  3. Ollama (offline)    -> ollama pull llama3.2
-  4. Built-in offline knowledge base (English)
-Optional env vars: GROQ_MODEL, GEMINI_MODEL, NEPHROSENSE_OLLAMA_MODEL
+2. EMERGENCY CHECK — before any API call.
+
+3. RAG RETRIEVAL — keyword scoring over 10 curated KB articles with
+   Marathi/Hindi/English summaries and source URLs (KDIGO, NKF, NIH).
+
+4. SYSTEM PROMPT — language instruction FIRST + medical guidance +
+   RAG facts + language instruction LAST.
+
+5. LLM ENGINE (in order of availability):
+   - Gemini gemini-flash-lite-latest  — fast, works on free tier
+   - Gemma  gemma-4-26b-a4b-it        — backup
+   - Ollama llama3.2                  — local offline backup
+   - Built-in KB                       — always available
+
+   NOTE: The Groq key on this project currently only has access to
+   whisper/guard models, not text LLMs. All text generation goes through
+   Gemini/Gemma.  When a working Groq text model is available again,
+   add it back via GROQ_MODEL env var.
+
+API KEYS (.streamlit/secrets.toml):
+   GEMINI_API_KEY — free at aistudio.google.com
+   GROQ_API_KEY   — free at console.groq.com (text models vary by plan)
 """
 import json
 import os
@@ -20,143 +38,271 @@ import re
 import threading
 import time
 
-GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+# ── API config ────────────────────────────────────────────────────────────────
+GROQ_KEY     = os.environ.get("GROQ_API_KEY",  "")
+GEMINI_KEY   = os.environ.get("GEMINI_API_KEY", "")
+
+# Ordered list of Gemini models to try — first one that responds gets used.
+# gemini-flash-lite-latest: fast, generous free quota, good Indic language support
+# gemma-4-26b-a4b-it: backup when flash-lite hits quota
+GEMINI_MODELS = os.environ.get(
+    "GEMINI_MODELS",
+    "gemini-flash-lite-latest,gemma-4-26b-a4b-it"
+).split(",")
+
+GROQ_MODEL   = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 OLLAMA_MODEL = os.environ.get("NEPHROSENSE_OLLAMA_MODEL", "llama3.2")
 OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
-TIMEOUT = 60
-_ollama_cache = {"ok": None, "t": 0.0}
+_ollama_cache   = {"ok": None, "t": 0.0}
 
-SYSTEM_PROMPT = """You are NephroBot, a kind health helper inside the NephroSense kidney-health app.
-Use very simple words and short sentences. Answer in 4-7 lines.
-For a symptom: one kind sentence; 3-4 common reasons (mention kidney/urine causes only if they fit); warning signs to see a doctor soon; 2 safe tips; then ONE simple follow-up question. If it has lasted weeks or months, say it needs a doctor check and name simple tests (blood test, urine test, ultrasound).
-You know kidney diseases in depth (CKD stages and eGFR, sudden kidney injury, diabetic and high-BP kidney damage, nephrotic syndrome, glomerulonephritis, polycystic kidney, lupus nephritis, stones, UTI, urine blockage, prostate, dialysis, transplant, kidney diet, medicines that harm kidneys) and common illnesses. Use REFERENCE FACTS and PATIENT CONTEXT when relevant.
-Never say "you definitely have". Give no medicine names or doses. Emergency signs (chest pain, no urine at all, severe swelling, trouble breathing, confusion, vomiting blood, black stools, fainting): tell them to go to a hospital or call 112 now. You are not a doctor - say so once, briefly."""
+# ── System prompt ─────────────────────────────────────────────────────────────
+SYSTEM_PROMPT = """You are NephroBot, a friendly health helper inside the NephroSense app made for Indian patients of all ages and genders.
 
-EMERGENCY_WORDS = [
-    "chest pain", "cannot pass urine", "can't pass urine", "cant pass urine", "no urine since",
+LANGUAGE — most important rule:
+- Patient wrote in Marathi → reply only in simple everyday Marathi people use at home, in Devanagari script.
+- Patient wrote in Hindi → reply only in simple everyday Hindi people use at home, in Devanagari script.
+- Patient wrote in English → reply only in simple English.
+- NEVER mix languages. NEVER use difficult bookish words.
+- If you must use a medical term like CKD or UTI, immediately explain it in one plain word.
+
+ANSWER STYLE:
+- Greeting: on your FIRST reply in the conversation start with one short greeting — English: "Hello" or "Hey"; Hindi: "नमस्ते"; Marathi: "नमस्कार". NEVER start with "अरे", "अहो", "Aree", "Arre" or any similar interjection. Do NOT repeat a greeting if you already greeted in this conversation.
+- Do NOT assume or mention the patient's gender unless they tell you. Use gender-neutral language.
+- Do NOT write long paragraphs. Answer in short bullet points ("- "), one short line each, under small plain headings written in the patient's language.
+- For symptoms use this order: one gentle reassurance line; Possible causes (2-3 bullets); What to do now (3-5 step bullets); Go to a doctor today if (2-4 bullets); then ONE follow-up question.
+- For knowledge questions: a one-line direct answer, then 3-6 bullets with practical examples.
+- Be accurate: give only medically correct, widely accepted advice (WHO, NKF, NHS, ICMR). Answer exactly what was asked. If you are not sure, say so and advise seeing a doctor — never guess and never invent numbers.
+- Use measurements people understand: "2-3 glasses of water", "15 minutes rest".
+- Never stop mid-sentence.
+
+MEDICAL SAFETY:
+- Never name medicines or doses.
+- Always say when to see a doctor urgently vs when to watch at home.
+- Emergency signs (chest pain, no urine, severe swelling, fainting, vomiting blood) → go to hospital NOW / call 112."""
+
+# ── Emergency detection ───────────────────────────────────────────────────────
+_EMERGENCY_WORDS = [
+    "chest pain", "cannot pass urine", "can't pass urine", "no urine since",
     "not passing urine at all", "severe swelling", "can't breathe", "cannot breathe",
-    "unconscious", "fainted", "vomiting blood", "vomiting blood", "black stool",
-    "छाती में दर्द", "पेशाब बिल्कुल नहीं", "छातीत दुखत", "लघवी अजिबात", "सांस नहीं",
+    "unconscious", "fainted", "vomiting blood", "black stool",
+    "छाती में दर्द", "पेशाब बिल्कुल नहीं", "सांस नहीं",
+    "छातीत दुखत", "लघवी अजिबात", "श्वास येत नाही",
 ]
 EMERGENCY_REPLY = (
-    "⚠️ **This may be a medical emergency.** Please go to the nearest hospital or call "
-    "emergency services (112 in India) right now. Do not wait for an app or chatbot answer. "
-    "If someone is with you, ask them to take you immediately."
+    "⚠️ **हे वैद्यकीय आणीबाणी असू शकते / यह मेडिकल इमर्जेंसी हो सकती है / This may be a medical emergency.**\n\n"
+    "🇮🇳 **तातडीने जवळच्या रुग्णालयात जा किंवा 112 वर कॉल करा.**\n"
+    "🇮🇳 **तुरंत नजदीकी अस्पताल जाएं या 112 पर कॉल करें.**\n"
+    "🇬🇧 **Go to the nearest hospital or call 112 (India) immediately. Do not wait.**"
 )
 
-# ── Language detection (done in code so a small model can't get it wrong) ──
+# ── Language detection ────────────────────────────────────────────────────────
 _DEVANAGARI = re.compile(r"[\u0900-\u097F]")
-_HINGLISH_WORDS = {
-    "mujhe", "mera", "meri", "mere", "hai", "hain", "nahi", "nahin", "kya", "kaise", "kyun", "kyon",
-    "dard", "aap", "aapko", "aapke", "bukhar", "hoon", "raha", "rahi", "rahe", "karo", "kaisa",
-    "batao", "bataiye", "gurde", "peshab", "pet dard", "aahe", "majha", "majhi", "mala", "kay",
-    "tumhala", "hoto", "hote", "lagto", "nahi", "ahe", "kasa", "kashi", "sanga", "lavkar",
+
+_MARATHI_DEVANAGARI = re.compile(
+    r"(आहे|आहेत|आहोत|आहेस|माझ|मला|तुम्ही|तुझ्या|आम्ही|आपण|"
+    r"नाही|नाहीत|नाहीस|करतो|करतात|करते|करतोस|"
+    r"येतो|येतात|जातो|जातात|असतो|असते|असतात|"
+    r"होतो|होते|होतात|वाटत|वाटते|वाटतो|"
+    r"दुखत|दुखते|दुखतो|झाले|झाली|झाला|झालात|"
+    r"सांग|कळत|कळते|मूत्रपिंड|लघवी|"
+    r"काय|आणि|त्याचे|त्याची|त्याचा|किती|कसे|कशाने|"
+    r"तर|पण|म्हणजे|म्हणून|कारण|त्यामुळे|"
+    r"डॉक्टरांना|रुग्णालय|तपासणी|घ्या|सांगा)"
+)
+
+_HINDI_DEVANAGARI = re.compile(
+    r"(मुझे|मेरा|मेरी|मेरे|आपको|आपकी|आपके|"
+    r"हूँ|हूं|रहा|रही|रहे|रहते|रहती|"
+    r"क्या\s|कैसे|क्यों|क्यूं|"
+    r"नहीं|नही|"
+    r" है | हैं |है।|हैं।|हो।|"
+    r"तेरा|तेरी|तुम्हारा|तुम्हारी|"
+    r"पेशाब|बुखार| दर्द |दर्द।|दर्द,|"
+    r"बीमारी|बीमार|इलाज|दवाई|दवा|"
+    r"होता|होती|होते|होना|करना|जाना|"
+    r"क्या होती|क्या है|क्या होता|"
+    r"के लिए|की पथरी|के बारे|घरेलू|स्वास्थ्य|"
+    r"बताएं|बताइए|करूं|करें|बचाव|लक्षण|"
+    r"गुर्दे|किडनी की|किडनी के|किडनी में)"
+)
+
+# Only Marathi-specific romanised words (NOT common English words like "the", "a")
+_MARATHI_ROMAN = {
+    "aahe", "ahe", "majha", "majhi", "majhe", "mala", "tumhala", "tumhi", "amhi",
+    "kasa", "kashi", "kase", "sanga", "hote", "hoto", "hoti", "lagto", "lagta",
+    "zala", "zali", "zale", "dukhat", "dukhtay", "lavkar", "naahi",
+    "kartat", "yetat", "jatat", "vatata", "asto", "aste", "aani", "tyache",
+    "kiti", "kaay", "mhanje", "mhanun", "asat", "asato",
+    "prakar", "lakshane", "upay", "tapasni",
 }
 
+# Only Hindi-specific romanised words — removed generic English words like "the", "a", "in"
+_HINDI_ROMAN = {
+    "mujhe", "mera", "meri", "mere", "aapko", "aapke", "hoon", "raha", "rahi",
+    "rahe", "kaisa", "batao", "bataiye", "peshab", "bukhar",
+    "theek", "bilkul", "bahut", "bohot", "kya", "kaise", "kyun", "kyon",
+    "hain", "gurde", "gurda", "dawai",
+    "bimari", "bimar", "ilaj", "dawa",
+}
+# Minimum romanised hits required to classify as Hindi/Marathi
+# (prevents false positives from short shared words)
+_MIN_ROMAN_HITS = 2
 
-def _detect_language(text):
-    """Returns 'hindi_marathi' only if the patient clearly wrote in Hindi/Marathi, else 'english'."""
-    t = (text or "").lower()
+
+def _detect_language(text: str) -> str:
+    """
+    Returns 'marathi', 'hindi', or 'english'.
+    Scoring approach: count Marathi vs Hindi markers, pick the winner.
+    """
+    t = (text or "").strip()
+    if not t:
+        return "english"
+
+    # Devanagari script present
     if _DEVANAGARI.search(t):
-        return "hindi_marathi"
-    words = set(re.findall(r"[a-z]+", t))
-    if len(words & _HINGLISH_WORDS) >= 1:
-        return "hindi_marathi"
+        marathi_hits = len(_MARATHI_DEVANAGARI.findall(t))
+        hindi_hits   = len(_HINDI_DEVANAGARI.findall(t))
+
+        if marathi_hits > hindi_hits:
+            return "marathi"
+        if hindi_hits > marathi_hits:
+            return "hindi"
+
+        # Tie-break: Marathi verb endings and postpositions
+        marathi_suffix = len(re.findall(r"[^\s](तो|ते|तात|ती|ताना|तांना)\b", t))
+        marathi_post   = len(re.findall(r"\b(ला|ने|चे|ची|चा|शी|मध्ये)\b", t))
+        # Hindi postpositions — score MORE of them so tied Devanagari defaults to Hindi
+        # when the text clearly has Hindi grammar (की, के, में, से, को, लिए, बारे)
+        hindi_post = len(re.findall(
+            r"\b(को|से|में|पर|के|की|का|और|या|भी|तो|लिए|बारे|घरेलू|पथरी|स्वास्थ्य)\b", t
+        ))
+
+        marathi_score = marathi_suffix + marathi_post
+        hindi_score   = hindi_post
+
+        if marathi_score > hindi_score:
+            return "marathi"
+        if hindi_score > marathi_score:
+            return "hindi"
+
+        # Marathi question words are a strong signal
+        if re.search(r"\b(काय|कसे|कशाने|कुठे|केव्हा|कोण|किती)\b", t):
+            return "marathi"
+
+        return "marathi"  # Default Devanagari → marathi for this app
+
+    # Romanised: require >= _MIN_ROMAN_HITS to avoid false positives
+    words = set(re.findall(r"[a-z]+", t.lower()))
+    marathi_hits = len(words & _MARATHI_ROMAN)
+    hindi_hits   = len(words & _HINDI_ROMAN)
+
+    if marathi_hits >= _MIN_ROMAN_HITS and marathi_hits >= hindi_hits:
+        return "marathi"
+    if hindi_hits >= _MIN_ROMAN_HITS:
+        return "hindi"
     return "english"
 
 
+# ── Language-specific instructions ───────────────────────────────────────────
 LANG_INSTRUCTION = {
     "english": (
-        "LANGUAGE (very important): The patient wrote in English. Reply ONLY in very simple English. "
-        "Do NOT use any Hindi or Marathi words, and do not write Hindi in English letters."
+        "LANGUAGE: Reply in simple, clear English. "
+        "Use words a non-medical person can understand. "
+        "Answer in short bullet points, not long paragraphs. "
+        "Greet with 'Hello' or 'Hey' (never 'Aree'). Give only accurate, well-established medical information."
     ),
-    "hindi_marathi": (
-        "LANGUAGE: The patient wrote in Hindi or Marathi. Reply in the same language and the same "
-        "script they used, in very simple everyday words."
+    "hindi": (
+        "भाषा: रोगी ने हिंदी में पूछा है।\n"
+        "जवाब केवल सरल, घरेलू हिंदी में दो — जैसे आप किसी परिवार के सदस्य को समझा रहे हों।\n"
+        "कठिन शब्द बिल्कुल मत इस्तेमाल करो। अगर कोई medical शब्द लिखो तो तुरंत आसान भाषा में समझाओ।\n"
+        "अंग्रेजी में एक शब्द भी मत लिखो। जवाब छोटे बुलेट पॉइंट्स (-) में दो, लंबा पैराग्राफ नहीं। पहली बार 'नमस्ते' से शुरू करो, 'अरे' से कभी नहीं। सही और पक्की जानकारी ही दो। बीच में कभी मत रुको।"
+    ),
+    "marathi": (
+        "भाषा: रुग्णाने मराठीत विचारले आहे.\n"
+        "उत्तर फक्त सोप्या, घरगुती मराठीत द्या — जसे घरच्या कोणाला सांगत आहात.\n"
+        "कठीण शब्द वापरू नका. Medical शब्द असेल तर लगेच सोप्या भाषेत समजावा.\n"
+        "इंग्रजीत एकही शब्द लिहू नका. उत्तर लहान बुलेट पॉइंट्स (-) मध्ये द्या, मोठा परिच्छेद नको. पहिल्यांदा 'नमस्कार' ने सुरुवात करा, 'अहो' किंवा 'अरे' ने कधीही नाही. अचूक आणि खात्रीशीर माहितीच द्या. अर्धवट सोडू नका."
     ),
 }
 
-# ── Built-in knowledge base (used for retrieval AND as offline answers) ──
-KB = [
-    ("Stomach / belly pain that lasts for weeks or months",
-     ["stomach pain", "stomach is paining", "stomach paining", "belly pain", "abdominal pain", "abdomen",
-      "stomach ache", "stomachache", "gastric", "acidity", "gas", "ulcer", "indigestion", "pet dard"],
-     "Belly pain for weeks or months should always be checked by a doctor. Common reasons: acidity or gastritis, stomach ulcer, constipation or irritable bowel, gallstones, infection (typhoid, worms), and in women period or ovary problems. Kidney or urine causes are also possible: kidney stones (pain in the side or lower belly that may spread to the groin), urine infection (burning urine, lower belly pain), or a blocked urine flow. See a doctor soon if there is weight loss, vomiting, black stools, blood in vomit or urine, fever, yellow eyes, or pain that wakes you at night. Useful tests: blood tests, urine test, and an ultrasound of the belly."),
-    ("Chronic kidney disease (CKD) & stages",
-     ["ckd", "chronic kidney", "kidney disease", "kidney failure", "stage", "egfr", "gfr", "kidney damage", "किडनी खराब", "मूत्रपिंड", "किडनी"],
-     "CKD means the kidneys have been damaged or working less well for 3+ months (eGFR below 60, or protein in urine). Stages by eGFR: G1 ≥90 (normal but with damage signs), G2 60-89, G3a 45-59, G3b 30-44, G4 15-29, G5 <15 (kidney failure). Early CKD often has NO symptoms, so tests matter: serum creatinine/eGFR and urine albumin (ACR). Common causes: diabetes, high BP, glomerulonephritis, PKD, long-term painkillers. Control sugar and BP, avoid NSAID painkillers, eat less salt, stop smoking, stay active, and get yearly tests if at risk."),
-    ("Acute kidney injury (AKI)",
-     ["aki", "acute kidney", "sudden kidney", "kidney injury", "contrast", "dehydration"],
-     "AKI is a sudden drop in kidney function over hours to days, often from severe dehydration, infection/sepsis, low BP, blockage, contrast dye, or drugs (NSAIDs, some antibiotics). Signs: much less urine, swelling, nausea, tiredness, confusion. It needs urgent medical care; many people recover fully if treated early."),
-    ("Diabetic kidney disease",
-     ["diabetes", "diabetic", "sugar", "dm", "मधुमेह", "शुगर", "साखर"],
-     "High blood sugar slowly damages the kidney's tiny filters. First sign is protein (albumin) in urine, later eGFR falls. Yearly urine ACR and creatinine tests are advised for every diabetic. Good sugar control (HbA1c target set by doctor), BP control, and doctor-prescribed kidney-protective medicines slow the damage a lot."),
-    ("Hypertensive kidney disease & kidney-BP link",
-     ["high blood pressure", "hypertension", "bp", "blood pressure", "रक्तदाब", "ब्लड प्रेशर"],
-     "Long-standing high BP harms the kidney's small vessels, and damaged kidneys raise BP further — a vicious circle. Target is usually below 130/80 for people with kidney disease (doctor decides). Cut salt, exercise, keep weight healthy, take BP medicines regularly, and check BP at home."),
-    ("Glomerulonephritis, nephrotic & nephritic syndrome, IgA nephropathy",
-     ["glomerulo", "nephrotic", "nephritic", "iga", "foamy", "frothy", "protein in urine", "proteinuria", "swelling face", "albumin"],
-     "These are diseases of the kidney's filters. Nephrotic syndrome: heavy protein loss → foamy urine, swelling of face/legs, low blood albumin, high cholesterol. Nephritic: blood in urine (cola-coloured), high BP, swelling. IgA nephropathy is the commonest glomerular disease worldwide. Diagnosis: urine ACR/PCR, urine microscopy, blood tests, sometimes kidney biopsy. Treatment depends on the type and may include steroids/immune medicines — needs a nephrologist."),
-    ("Polycystic kidney disease (PKD)",
-     ["polycystic", "pkd", "cyst", "inherited", "genetic", "family history"],
-     "PKD is an inherited condition where many fluid-filled cysts grow in both kidneys. Signs: flank pain, blood in urine, high BP, UTIs, stones, enlarged kidneys. Diagnosed by ultrasound; family members may be screened. Control of BP, plenty of water and regular nephrology follow-up help; newer medicines exist for some patients."),
-    ("Kidney stones (mutkhada)",
-     ["stone", "stones", "mutkhada", "calculi", "renal colic", "मुतखडा", "पथरी", "kidney pain", "back pain", "side pain"],
-     "Stones form when minerals crystallise in urine. Signs: sudden severe pain in side/back that spreads to groin, blood in urine, nausea, burning urination. Drink 2.5-3 litres of water daily, cut excess salt, limit very high-oxalate foods if advised, and keep normal calcium intake. See a doctor for severe pain, fever with pain, or if you cannot pass urine; most small stones pass on their own, bigger ones need ultrasound/CT and urology care."),
-    ("Urinary tract infection (UTI) & pyelonephritis",
-     ["uti", "urine infection", "burning urine", "burning", "pyelonephritis", "cystitis", "painful urination", "जलन", "जळजळ"],
-     "UTI: burning or urgent urination, going often, lower belly pain, cloudy or smelly urine. If it climbs to the kidney (pyelonephritis) you get fever, chills, back/flank pain and vomiting — needs prompt treatment. Needs urine test/culture and a doctor-prescribed antibiotic. Prevention: drink water, don't hold urine, urinate after intercourse, front-to-back hygiene. Repeated UTIs need checking for stones or blockage."),
-    ("Urinary obstruction, hydronephrosis & enlarged prostate (BPH)",
-     ["prostate", "bph", "hydronephrosis", "obstruction", "weak stream", "urine stream", "night urination", "nocturia"],
-     "Blocked urine flow (stone, prostate enlargement, narrowing, tumour) backs up pressure and can damage the kidney (hydronephrosis). Signs: weak stream, straining, dribbling, getting up at night, incomplete emptying. Ultrasound with residual urine check, PSA in men, and creatinine are done. Treatable — don't delay."),
-    ("Lupus nephritis & autoimmune kidney disease",
-     ["lupus", "sle", "autoimmune", "rheumatoid", "vasculitis"],
-     "In autoimmune disease the immune system can attack the kidney filters. Lupus nephritis is common in young women with lupus: foamy urine, swelling, high BP, blood/protein in urine. Needs a nephrologist and rheumatologist, immune-suppressing treatment and regular tests."),
-    ("Painkillers (NSAIDs) and medicines that harm kidneys",
-     ["painkiller", "nsaid", "ibuprofen", "diclofenac", "brufen", "voveran", "medicine", "herbal", "ayurvedic", "contrast dye"],
-     "Regular use of NSAID painkillers (ibuprofen, diclofenac, naproxen, etc.) can injure kidneys, especially with dehydration, diabetes, BP or existing CKD. Some herbal/'ayurvedic' preparations with heavy metals also harm kidneys. Tell every doctor about your kidney problem before any new medicine or contrast scan. Never stop prescribed medicines on your own — ask your doctor."),
-    ("Dialysis and kidney transplant",
-     ["dialysis", "haemodialysis", "hemodialysis", "transplant", "peritoneal", "fistula", "डायलिसिस"],
-     "Dialysis is needed when kidneys fail (usually eGFR below ~10-15 with symptoms). Haemodialysis cleans blood through a machine, usually 3 times a week for ~4 hours, using a fistula or catheter. Peritoneal dialysis uses the belly lining and can be done at home. A kidney transplant gives the best quality of life for suitable patients; donors can be living or deceased. Government schemes (e.g., PM-JAY / state schemes) may cover dialysis — ask a hospital social worker."),
-    ("Diet and lifestyle for kidney health",
-     ["diet", "food", "eat", "salt", "potassium", "protein", "water", "drink", "banana", "आहार", "खाना"],
-     "For healthy kidneys: less salt (under 5 g/day), plenty of water unless a doctor restricts fluids, more vegetables, limited processed food and sugary drinks, regular exercise, no smoking, limited alcohol. In CKD diets are personalised: advanced CKD may need limits on potassium (banana, coconut water, tomato, potato), phosphorus (colas, processed food), salt and sometimes protein or fluids — a renal dietitian should guide you. Do not start a restrictive diet on your own."),
-    ("Anaemia, high potassium and other CKD complications",
-     ["anaemia", "anemia", "hemoglobin", "haemoglobin", "hb", "potassium", "bone", "itching", "tired", "fatigue"],
-     "Damaged kidneys make less erythropoietin → anaemia (tiredness, pale look, breathlessness). They also can't remove potassium/phosphate/acid well → high potassium, weak bones, itching, nausea. These are checked with CBC, potassium, calcium, phosphate and PTH, and are treatable under a doctor's care."),
-    ("Kidney function tests: creatinine, urea, eGFR, ACR",
-     ["creatinine", "urea", "bun", "test", "report", "acr", "normal range", "uric", "blood test"],
-     "Serum creatinine (normal roughly 0.6-1.2 mg/dL; lower in women/young) is used with age and sex to calculate eGFR (normal ≥90). Blood urea normal ~15-40 mg/dL (higher with dehydration, high-protein diet, steroids). Urine ACR (albumin-to-creatinine ratio) below 30 mg/g is normal; 30-300 is mildly raised, above 300 markedly raised. A single abnormal result needs repeating — CKD needs 3+ months of abnormality."),
-    ("Diabetes, thyroid and anaemia basics",
-     ["thyroid", "tsh", "hba1c", "hypothyroid", "hyperthyroid", "sugar level"],
-     "Diabetes: fasting sugar above 126 mg/dL or HbA1c ≥6.5% on repeat testing. Thyroid disorders cause tiredness, weight change and mood changes and are checked with TSH; they can mildly affect kidney tests. Anaemia in women is often iron deficiency; a doctor should check the cause."),
-    ("Fever, malaria, dengue, typhoid (and kidneys)",
-     ["fever", "malaria", "dengue", "typhoid", "jaundice", "viral", "ताप", "बुखार"],
-     "Fever with chills/shivering → malaria possible; high fever with body/eye pain and low platelets → dengue; step-ladder fever with stomach upset → typhoid. All need testing (malaria/dengue/Widal or culture) and a doctor's treatment. Severe infections, dehydration or sepsis can injure the kidneys, so drink fluids, avoid NSAID painkillers unless the doctor allows, and seek care urgently if urine becomes very little or you feel confused or very weak."),
+# ── Offline fallback KB ───────────────────────────────────────────────────────
+_KB_OFFLINE = [
+    ("Chronic Kidney Disease (CKD)",
+     ["ckd", "chronic kidney", "kidney disease", "kidney failure", "egfr", "gfr",
+      "kidney", "renal", "murpind", "mootrpind"],
+     "CKD means kidneys are damaged and working poorly for 3+ months. "
+     "Stages G1–G5 by eGFR: G1 (≥90, damage present), G2 (60–89), G3a (45–59), "
+     "G3b (30–44), G4 (15–29), G5 (<15, kidney failure). "
+     "Symptoms appear late — test creatinine and urine protein yearly if diabetic or hypertensive. "
+     "Main causes: diabetes, high BP, NSAIDs. "
+     "Control sugar, control BP, avoid NSAID painkillers, less salt. "
+     "Source: KDIGO 2024 — https://kdigo.org/"),
+    ("Kidney Stones",
+     ["stone", "stones", "calculi", "mutkhada", "pathri", "flank pain", "groin pain",
+      "kidney pain", "side pain", "urine block"],
+     "Kidney stones cause sudden severe side/back pain spreading to groin, blood in urine, nausea. "
+     "Treatment: drink 2.5–3L water daily; small stones (<5mm) usually pass on their own in 1–4 weeks. "
+     "Pain relief: lie down, apply a warm cloth to the back, stay hydrated. "
+     "See a doctor urgently for: fever with pain (sign of infection), complete urine block, "
+     "stones >7mm (need medical removal). "
+     "Prevention: drink 3L water daily, less salt, less animal protein. "
+     "Source: NKF — https://www.kidney.org/kidney-topics/kidney-stones"),
+    ("UTI — Urine Infection",
+     ["uti", "urine infection", "burning urine", "burning urination", "cystitis",
+      "ladwi jalna", "peshab jalan", "lagwi jalna"],
+     "UTI causes burning urination, frequent urination, lower belly pain, cloudy or smelly urine. "
+     "Home care: drink 2–3L water, urinate frequently, avoid holding urine, avoid spicy food. "
+     "If fever + back/flank pain: kidney infection — see doctor same day (antibiotics needed). "
+     "Women: urinate after intercourse, front-to-back hygiene reduces recurrence. "
+     "Source: NIH MedlinePlus — https://medlineplus.gov/urinarytractinfections.html"),
+    ("Back Pain / Flank Pain",
+     ["back pain", "backache", "flank pain", "side pain", "lower back", "pith dukhi",
+      "pathdukhna", "pathdukhi", "kamardard", "peeth dard"],
+     "Back pain has many causes: muscle strain (most common), kidney stones, UTI, disc problems, poor posture. "
+     "Home relief for muscle strain: rest 1–2 days, apply warm cloth (not hot) to painful area for 15 min 3x/day, "
+     "gentle stretching after 48 hours, avoid heavy lifting. "
+     "See doctor if: pain with fever/chills (kidney infection), burning urine, blood in urine, "
+     "pain shooting to groin (kidney stone), weakness in legs, pain lasting more than 2 weeks. "
+     "Source: NIH MedlinePlus — https://medlineplus.gov/backpain.html"),
+    ("Kidney Health — Diet and Lifestyle",
+     ["diet", "food", "healthy kidney", "kidney health", "water intake", "salt", "potassium",
+      "aahar", "jevan", "pani", "khana"],
+     "For healthy kidneys: drink 2–3L water daily, limit salt to <5g/day, eat more vegetables and fruits, "
+     "avoid NSAID painkillers (ibuprofen, diclofenac), control blood sugar and blood pressure. "
+     "In CKD (stages 3–5): limit potassium foods (banana, coconut water, tomato, potato) and "
+     "phosphorus (cola drinks, processed food) per doctor's advice. "
+     "Exercise 30 min daily, stop smoking, limit alcohol. "
+     "Source: NKF — https://www.kidney.org/kidney-topics/nutrition-kidney-disease"),
 ]
 
 
-def _retrieve(text, k=3):
+def _kb_offline_retrieve(text: str, k: int = 2) -> list[tuple[str, str]]:
     t = (text or "").lower()
     scored = []
-    for name, kws, body in KB:
+    for name, kws, body in _KB_OFFLINE:
         s = sum(1 for kw in kws if kw in t)
         if s:
             scored.append((s, name, body))
-    scored.sort(key=lambda x: x[0], reverse=True)
+    scored.sort(reverse=True)
     return [(n, b) for _, n, b in scored[:k]]
 
 
-def _is_emergency(text):
-    t = (text or "").lower()
-    return any(w in t for w in EMERGENCY_WORDS)
+def _offline_answer(text: str, lang: str = "english") -> str:
+    refs = _kb_offline_retrieve(text)
+    if not refs:
+        if lang == "marathi":
+            return "मला किडनी आरोग्य, किडनी स्टोन, UTI, डायलिसिस यावर मदत करता येते. कृपया अधिक तपशील सांगा."
+        if lang == "hindi":
+            return "मैं किडनी स्वास्थ्य, किडनी स्टोन, UTI, डायलिसिस पर मदद कर सकता हूं। कृपया अधिक जानकारी दें।"
+        return ("I can help with kidney health, kidney stones, UTI, dialysis, diet, and blood tests. "
+                "Could you give me more details?")
+    parts = [f"**{n}**\n\n{b}" for n, b in refs[:2]]
+    return "\n\n---\n\n".join(parts) + "\n\n_General information — confirm with your doctor._"
 
 
-def _ollama_ok():
+# ── Ollama check ──────────────────────────────────────────────────────────────
+def _ollama_ok() -> bool:
     now = time.time()
     if _ollama_cache["ok"] is not None and now - _ollama_cache["t"] < 30:
         return _ollama_cache["ok"]
@@ -167,23 +313,23 @@ def _ollama_ok():
         if r.status_code == 200:
             ok = any(OLLAMA_MODEL in m.get("name", "") for m in r.json().get("models", []))
     except Exception:
-        ok = False
+        pass
     _ollama_cache.update(ok=ok, t=now)
     return ok
 
 
-def chatbot_status():
-    """Always (True, text): worst case the offline knowledge base answers."""
-    if GROQ_KEY:
-        return True, "🟢 NephroBot is online (Groq AI + built-in kidney knowledge)."
+def chatbot_status() -> tuple[bool, str]:
     if GEMINI_KEY:
-        return True, "🟢 NephroBot is online (Gemini AI + built-in kidney knowledge)."
+        return True, "🟢 NephroBot online — Gemini AI + built-in medical KB."
+    if GROQ_KEY:
+        return True, "🟢 NephroBot online — Groq AI + built-in medical KB."
     if _ollama_ok():
-        return True, f"🟢 NephroBot is running offline on this computer ({OLLAMA_MODEL})."
-    return True, ("🟡 Basic mode: answering from the built-in kidney knowledge base (English). "
-                  "For fuller answers set a free GROQ_API_KEY or GEMINI_API_KEY.")
+        return True, f"🟢 NephroBot running offline ({OLLAMA_MODEL})."
+    return True, ("🟡 Basic mode — answering from built-in kidney knowledge (English only). "
+                  "Add GEMINI_API_KEY in .streamlit/secrets.toml for full multilingual AI.")
 
 
+# ── SSE streaming helper ──────────────────────────────────────────────────────
 def _sse_lines(r):
     r.encoding = "utf-8"
     for line in r.iter_lines(decode_unicode=True):
@@ -191,13 +337,81 @@ def _sse_lines(r):
             yield line[5:].strip()
 
 
-def _stream_groq(messages):
+# ── Gemini streaming (tries each model in GEMINI_MODELS until one works) ─────
+def _stream_gemini(system: str, history: list[dict]):
+    """
+    Tries models in GEMINI_MODELS in order.
+    Uses non-streaming for reliability (streaming SSE drops chunks on some models).
+    Yields text tokens one at a time so st.write_stream() works.
+    """
+    import requests
+    contents = [
+        {"role": "user" if m["role"] == "user" else "model",
+         "parts": [{"text": m["content"]}]}
+        for m in history
+    ]
+    last_exc = None
+    for model in GEMINI_MODELS:
+        model = model.strip()
+        try:
+            r = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                params={"key": GEMINI_KEY},
+                json={
+                    "system_instruction": {"parts": [{"text": system}]},
+                    "contents": contents,
+                    "generationConfig": {
+                        "temperature": 0.3,
+                        "maxOutputTokens": 1200,
+                    },
+                },
+                timeout=(10, 60),
+            )
+            if r.status_code == 429:
+                last_exc = Exception(f"{model}: quota exceeded (429)")
+                continue
+            if r.status_code == 404:
+                last_exc = Exception(f"{model}: not found (404)")
+                continue
+            r.raise_for_status()
+            data = r.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                last_exc = Exception(f"{model}: no candidates in response")
+                continue
+            text = candidates[0]["content"]["parts"][0].get("text", "")
+            if not text.strip():
+                last_exc = Exception(f"{model}: empty text")
+                continue
+            # Yield in chunks so st.write_stream shows streaming effect
+            words = text.split(" ")
+            chunk = ""
+            for w in words:
+                chunk += w + " "
+                if len(chunk) >= 20:
+                    yield chunk
+                    chunk = ""
+            if chunk:
+                yield chunk
+            return
+        except Exception as e:
+            last_exc = e
+            continue
+    if last_exc:
+        raise last_exc
+
+
+# ── Groq streaming ────────────────────────────────────────────────────────────
+def _stream_groq(messages: list[dict]):
     import requests
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-        json={"model": GROQ_MODEL, "messages": messages, "temperature": 0.4, "max_tokens": 450, "stream": True},
-        stream=True, timeout=(5, 60))
+        headers={"Authorization": f"Bearer {GROQ_KEY}",
+                 "Content-Type": "application/json"},
+        json={"model": GROQ_MODEL, "messages": messages,
+              "temperature": 0.3, "max_tokens": 1200, "stream": True},
+        stream=True, timeout=(5, 60),
+    )
     r.raise_for_status()
     for data in _sse_lines(r):
         if data == "[DONE]":
@@ -210,34 +424,16 @@ def _stream_groq(messages):
             yield piece
 
 
-def _stream_gemini(system, history):
-    import requests
-    contents = [{"role": "user" if m["role"] == "user" else "model",
-                 "parts": [{"text": m["content"]}]} for m in history]
-    r = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:streamGenerateContent",
-        params={"key": GEMINI_KEY, "alt": "sse"},
-        json={"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
-              "generationConfig": {"temperature": 0.4, "maxOutputTokens": 500}},
-        stream=True, timeout=(5, 60))
-    r.raise_for_status()
-    for data in _sse_lines(r):
-        try:
-            parts = json.loads(data)["candidates"][0]["content"]["parts"]
-        except (ValueError, KeyError, IndexError):
-            continue
-        for p in parts:
-            if p.get("text"):
-                yield p["text"]
-
-
-def _stream_ollama(messages):
+# ── Ollama streaming ──────────────────────────────────────────────────────────
+def _stream_ollama(messages: list[dict]):
     import requests
     r = requests.post(
         OLLAMA_CHAT_URL,
-        json={"model": OLLAMA_MODEL, "messages": messages, "stream": True, "keep_alive": "30m",
-              "options": {"temperature": 0.3, "num_predict": 320, "num_ctx": 2048}},
-        stream=True, timeout=(5, 120))
+        json={"model": OLLAMA_MODEL, "messages": messages, "stream": True,
+              "keep_alive": "30m",
+              "options": {"temperature": 0.3, "num_predict": 800, "num_ctx": 3000}},
+        stream=True, timeout=(5, 120),
+    )
     r.raise_for_status()
     r.encoding = "utf-8"
     for line in r.iter_lines(decode_unicode=True):
@@ -254,107 +450,119 @@ def _stream_ollama(messages):
             break
 
 
+# ── Background warm-up ────────────────────────────────────────────────────────
 def warm_up():
-    """Load the offline model into memory in the background so the first question isn't slow."""
     def _go():
         try:
             if not (GROQ_KEY or GEMINI_KEY) and _ollama_ok():
                 import requests
                 requests.post(OLLAMA_CHAT_URL,
-                              json={"model": OLLAMA_MODEL, "messages": [{"role": "user", "content": "hi"}],
-                                    "stream": False, "keep_alive": "30m", "options": {"num_predict": 1}},
+                              json={"model": OLLAMA_MODEL,
+                                    "messages": [{"role": "user", "content": "hi"}],
+                                    "stream": False, "keep_alive": "30m",
+                                    "options": {"num_predict": 1}},
                               timeout=120)
         except Exception:
             pass
     threading.Thread(target=_go, daemon=True).start()
 
 
-_PERSONAL = re.compile(r"\b(i|my|me|myself|mine|we|our)\b", re.I)
-_GENERAL_Q = re.compile(r"^\s*(what|why|how|when|which|who|define|explain|tell me about|meaning of|causes? of|symptoms? of)\b", re.I)
-
-
-def _instant_answer(text, lang):
-    """General 'what is / why / how' questions are answered at once from the built-in kidney knowledge,
-    so a slow local model is not needed. Personal questions (about the patient's own symptoms) go to the AI."""
-    if lang != "english" or _PERSONAL.search(text or "") or not _GENERAL_Q.search(text or ""):
-        return None
-    refs = _retrieve(text, k=1)
-    if not refs:
-        return None
-    name, body = refs[0]
-    return (f"**{name}**\n\n{body}\n\n_General information, not a diagnosis. "
-            f"Ask me a follow-up question any time._")
-
-
-def _offline_answer(refs):
-    if not refs:
-        return ("I can help with kidney health (CKD, stones, UTI, dialysis, transplant, diet, test reports) "
-                "and common illnesses. Could you tell me a little more? For example: "
-                "\"What are the signs of kidney stones?\" or \"What does eGFR mean?\"")
-    parts = [f"**{n}**\n\n{b}" for n, b in refs[:2]]
-    return ("\n\n---\n\n".join(parts) +
-            "\n\n_This is general information, not a diagnosis. Please confirm with a doctor._")
-
-
-def stream_chatbot_reply(conversation_history, patient_context=""):
-    """Generator of text pieces: the answer appears word by word instead of after a long wait."""
+# ── Main streaming reply generator ───────────────────────────────────────────
+def stream_chatbot_reply(conversation_history: list[dict],
+                         patient_context: str = ""):
+    """
+    Generator — yields text tokens one by one for st.write_stream().
+    """
     if not conversation_history:
         yield "Please type a question."
         return
-    last = conversation_history[-1]["content"]
-    if _is_emergency(last):
+
+    last_msg = conversation_history[-1]["content"]
+
+    # 1. Emergency check
+    t_low = last_msg.lower()
+    if any(w in t_low for w in _EMERGENCY_WORDS):
         yield EMERGENCY_REPLY
         return
 
-    lang = _detect_language(last)
-    if not (GROQ_KEY or GEMINI_KEY):          # only a slow local model is available -> answer common questions instantly
-        quick = _instant_answer(last, lang)
-        if quick:
-            yield quick
-            return
-    recent_user_text = " ".join(m["content"] for m in conversation_history[-4:] if m["role"] == "user")
-    refs = _retrieve(recent_user_text, k=2)
+    # 2. Language detection
+    lang = _detect_language(last_msg)
 
-    system = SYSTEM_PROMPT
+    # 3. RAG retrieval
+    recent_text = " ".join(
+        m["content"] for m in conversation_history[-4:]
+        if m["role"] == "user"
+    )
+    try:
+        from rag_kb import retrieve_context, format_context_for_prompt
+        kb_articles = retrieve_context(recent_text, lang, k=2)
+        kb_section  = format_context_for_prompt(kb_articles, lang)
+    except Exception:
+        kb_articles = []
+        kb_section  = ""
+
+    # 4. No API available → offline answer
+    if not (GEMINI_KEY or GROQ_KEY) and not _ollama_ok():
+        yield _offline_answer(last_msg, lang)
+        return
+
+    # 5. Build system prompt — language instruction FIRST and LAST
+    system = LANG_INSTRUCTION[lang] + "\n\n" + SYSTEM_PROMPT
+
     if patient_context:
-        system += f"\n\nPATIENT CONTEXT (only if relevant): {patient_context}"
-    if refs:
-        system += "\n\nREFERENCE FACTS:\n" + "\n".join(f"- {n}: {b[:420]}" for n, b in refs)
-    system += "\n\n" + LANG_INSTRUCTION[lang]
+        ctx_label = {
+            "english": "PATIENT HEALTH CONTEXT (use if relevant):",
+            "hindi":   "रोगी का स्वास्थ्य संदर्भ (प्रासंगिक होने पर उपयोग करें):",
+            "marathi": "रुग्णाची आरोग्य माहिती (प्रासंगिक असल्यास वापरा):",
+        }[lang]
+        system += f"\n\n{ctx_label}\n{patient_context}"
 
+    if kb_section:
+        system += f"\n\n{kb_section}"
+
+    system += "\n\n" + LANG_INSTRUCTION[lang]  # repeated at end
+
+    # 6. Build messages
     history = conversation_history[-6:]
-    if lang == "english":
-        history = [m for m in history if m["role"] == "user" or _detect_language(m["content"]) == "english"]
     if not history or history[-1]["role"] != "user":
-        history = history + [{"role": "user", "content": last}]
+        history = history + [{"role": "user", "content": last_msg}]
 
     messages = [{"role": "system", "content": system}] + history
-    messages[-1] = {"role": "user", "content": messages[-1]["content"] + "\n\n(" + LANG_INSTRUCTION[lang] + ")"}
+    messages[-1] = {
+        "role": "user",
+        "content": messages[-1]["content"] + f"\n\n({LANG_INSTRUCTION[lang]})",
+    }
 
+    # 7. Engine selection
     engines = []
-    if GROQ_KEY:
-        engines.append(lambda: _stream_groq(messages))
     if GEMINI_KEY:
-        engines.append(lambda: _stream_gemini(system, history))
+        # Gemini for all languages — gemini-flash-lite is fast and handles Indic well
+        engines.append(("gemini", lambda: _stream_gemini(system, history)))
+    if GROQ_KEY:
+        engines.append(("groq", lambda: _stream_groq(messages)))
     if _ollama_ok():
-        engines.append(lambda: _stream_ollama(messages))
+        engines.append(("ollama", lambda: _stream_ollama(messages)))
 
-    for make in engines:
+    # 8. Stream with fallback
+    for name, make_stream in engines:
         started = False
         try:
-            for piece in make():
+            for piece in make_stream():
                 started = True
                 yield piece
             if started:
                 return
         except Exception:
-            if started:          # already showing an answer - stop cleanly instead of repeating it
+            if started:
                 return
             continue
-    yield _offline_answer(refs)
+
+    # 9. All engines failed → offline KB
+    yield _offline_answer(last_msg, lang)
 
 
-def get_chatbot_reply(conversation_history, patient_context=""):
-    """Non-streaming version (kept for older callers). Returns (reply_or_None, error_or_None)."""
+def get_chatbot_reply(conversation_history: list[dict],
+                      patient_context: str = "") -> tuple[str | None, str | None]:
+    """Non-streaming version for legacy callers."""
     text = "".join(stream_chatbot_reply(conversation_history, patient_context)).strip()
-    return (text, None) if text else (None, "NephroBot could not answer right now. Please try again.")
+    return (text, None) if text else (None, "NephroBot could not answer right now.")

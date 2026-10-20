@@ -1,25 +1,22 @@
-# NephroSense — Python packages needed to run the app.
-# Install everything in one go with:
-#     pip install -r requirements.txt
+# NephroSense — install with:  pip install -r requirements.txt
 
-# Core app
-streamlit
+# Core
+streamlit>=1.28
 pandas
 numpy
 
-# Lifestyle Assessment (works without these too, using the simple
-# built-in formula — only needed if you train the Random Forest model)
+# ML / Assessment
 scikit-learn
 joblib
 
 # Visual Screening (Eye)
 opencv-python
 
-# Voice Screening
-librosa
-soundfile
-
-# Optional: auto-fill lifestyle answers from a photo/PDF of a lab report
+# Lab report scanning (optional)
 pytesseract
 pillow
 pypdf
+
+# HTTP (used by chatbot API calls — usually already installed)
+requests
+python-dotenv

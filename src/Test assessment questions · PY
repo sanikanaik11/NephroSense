@@ -1,0 +1,95 @@
+import unittest
+from datetime import date
+import _path  # noqa: F401
+from age_utils import parse_dob, calculate_age
+import assessment_questions as aq
+
+
+class AgeTests(unittest.TestCase):
+    def test_exact_age_before_and_after_birthday(self):
+        self.assertEqual(calculate_age("15/06/1973", date(2026, 6, 14)), 52)
+        self.assertEqual(calculate_age("15/06/1973", date(2026, 6, 15)), 53)
+        self.assertEqual(calculate_age("15/06/1973", date(2026, 10, 21)), 53)
+
+    def test_formats_and_bad_input(self):
+        self.assertEqual(parse_dob("5-3-1990"), date(1990, 3, 5))
+        self.assertEqual(parse_dob("1990-03-05"), date(1990, 3, 5))
+        self.assertIsNone(parse_dob("31/02/1990"))
+        self.assertIsNone(parse_dob("abc"))
+        self.assertIsNone(parse_dob(""))
+        self.assertIsNone(calculate_age("01/01/2999"))
+        self.assertIsNone(calculate_age("01/01/1800"))
+
+    def test_leap_day_birthday(self):
+        self.assertEqual(calculate_age("29/02/2000", date(2026, 2, 28)), 25)
+        self.assertEqual(calculate_age("29/02/2000", date(2026, 3, 1)), 26)
+
+
+class QuestionTests(unittest.TestCase):
+    def keys(self, sex, age, a=None):
+        return {q["key"] for _t, qs in aq.visible_sections(sex, age, a) for q in qs}
+
+    def test_men_and_women_get_different_questions(self):
+        m, f = self.keys("m", 53), self.keys("f", 30)
+        self.assertIn("prostate", m); self.assertNotIn("prostate", f)
+        self.assertIn("preg_now", f); self.assertNotIn("preg_now", m)
+        self.assertNotIn("prostate", self.keys("m", 30))          # under 45
+        self.assertNotIn("preg_now", self.keys("f", 60))          # past child-bearing age
+
+    def test_no_lab_questions_anywhere(self):
+        banned = {"sc", "bu", "hemo", "pcv", "sg", "al", "su", "bgr", "sod", "pot", "wbcc", "rbcc"}
+        every = {q["key"] for _t, qs in aq.SECTIONS for q in qs}
+        self.assertFalse(every & banned)
+
+    def test_followups_only_after_yes(self):
+        self.assertNotIn("bp_meds", self.keys("m", 53, {"htn": "no"}))
+        self.assertIn("bp_meds", self.keys("m", 53, {"htn": "yes"}))
+        self.assertIn("htn_years", self.keys("m", 53, {"htn": "yes"}))
+
+    def test_missing_required_is_reported_not_filled(self):
+        miss = aq.missing_required({"htn": "yes"}, "m", 53)
+        self.assertTrue(any("diabetes" in x for x in miss))
+        self.assertFalse(any("high blood pressure" in x for x in miss))
+        full = {"htn": "yes", "bp_meds": "yes", "htn_years": "5-10 years", "dm": "no", "cad": "no", "height": 170,
+                "weight": 70, "known_ckd": "no", "family_ckd": "no", "stones": "Never", "nsaid": "Never"}
+        self.assertEqual(aq.missing_required(full, "m", 53), [])
+        nofollow = {k: v for k, v in full.items() if k not in ("bp_meds", "htn_years")}
+        self.assertEqual(len(aq.missing_required(nofollow, "m", 53)), 2)   # follow-ups are never filled silently
+        self.assertTrue(aq.missing_required(full, "f", 30))       # women also need the pregnancy question
+
+    def test_53_year_old_man_on_bp_medicine_no_tests(self):
+        raw = {"htn": "yes", "bp_meds": "yes", "htn_years": "5-10 years", "dm": "no", "cad": "no", "height": 168,
+               "weight": 72, "known_ckd": "no", "family_ckd": "not sure", "stones": "Never", "nsaid": "Daily"}
+        d = aq.derive(raw, [], None, "m", 53)
+        c, m = d["clinical_answers"], d["model_answers"]
+        self.assertEqual(m["htn"], "yes"); self.assertEqual(m["age"], 53)
+        self.assertEqual(c["long_term_htn"], "5-10 years"); self.assertEqual(c["nsaid_use"], "Daily")
+        self.assertEqual(c["bmi_category"], "Overweight (25-29.9)")
+        self.assertEqual(c["prostate"], "no")
+        self.assertTrue(any("not sure" in n for n in d["notes"]))   # family history was unsure -> disclosed
+        self.assertTrue(any("No recent BP reading" in n for n in d["notes"]))
+
+    def test_bp_reading_used_only_when_valid_and_recent(self):
+        base = {"htn": "no"}
+        ok = aq.derive({**base, "sbp": 150, "dbp": 95, "bp_when": "This week"}, [], None, "m", 40)
+        self.assertEqual(ok["model_answers"]["bp"], 95.0)
+        old = aq.derive({**base, "sbp": 150, "dbp": 95, "bp_when": "More than a year ago"}, [], None, "m", 40)
+        self.assertEqual(old["model_answers"]["bp"], 80.0)
+        self.assertTrue(any("not used" in n for n in old["notes"]))
+        swapped = aq.derive({**base, "sbp": 80, "dbp": 120, "bp_when": "This week"}, [], None, "m", 40)
+        self.assertTrue(any("not used" in n for n in swapped["notes"]))
+
+    def test_stop_reasons_and_flags(self):
+        self.assertEqual(aq.stop_reason({}, "m", 15), "minor")
+        self.assertEqual(aq.stop_reason({"preg_now": "yes"}, "f", 28), "pregnant")
+        self.assertIsNone(aq.stop_reason({"preg_now": "no"}, "f", 28))
+        self.assertEqual(set(aq.red_flags(["little_urine", "foamy", "swelling"])), {"little_urine", "swelling"})
+
+    def test_bmi(self):
+        self.assertEqual(aq.bmi_value(170, 70), 24.2)
+        self.assertIsNone(aq.bmi_value(50, 70))
+        self.assertEqual(aq.bmi_category(None), "unknown")
+
+
+if __name__ == "__main__":
+    unittest.main()

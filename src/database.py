@@ -19,6 +19,9 @@ Plus: users now also store last_login — updated on every successful
 sign-in, shown in the sidebar so the patient/doctor can see when the
 account was last accessed.
 
+Plus (home screening): consents, bp_readings (7-day home BP) and home_screens tables. Readings and answers are
+encrypted at rest with the same Fernet key; delete_home_data() removes them on request.
+
 Needs: pip install bcrypt cryptography
 """
 import sqlite3
@@ -28,6 +31,8 @@ from datetime import datetime
 
 import bcrypt
 from cryptography.fernet import Fernet, InvalidToken
+
+from age_utils import calculate_age
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -192,6 +197,39 @@ def create_tables():
         if col not in existing_cols:
             c.execute(f"ALTER TABLE assessments ADD COLUMN {col} {col_type}")
     conn.commit()
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS consents (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            version    TEXT NOT NULL,
+            language   TEXT,
+            created_at TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS bp_readings (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            subject     TEXT NOT NULL,
+            day_idx     INTEGER NOT NULL,
+            period      TEXT NOT NULL,
+            reading_enc TEXT NOT NULL,
+            taken_at    TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS home_screens (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL,
+            subject       TEXT NOT NULL,
+            band          TEXT,
+            payload_enc   TEXT,
+            model_version TEXT,
+            created_at    TEXT
+        )
+    """)
+    conn.commit()
     conn.close()
 
 
@@ -261,7 +299,7 @@ def login_user(email, password):
     c = conn.cursor()
     c.execute(
         """
-        SELECT id, full_name, email, password, gender, age, role, phone, city,
+        SELECT id, full_name, email, password, gender, age, role, phone, city, dob,
                blood_group, diabetes, hypertension, heart_disease,
                kidney_history, extra_data, last_login
         FROM users
@@ -277,6 +315,13 @@ def login_user(email, password):
 
     user = dict(row)
     previous_last_login = user.get("last_login")
+
+    # Age is always calculated from the date of birth, so it is exact and never goes stale.
+    _age = calculate_age(user.get("dob"))
+    if _age is not None and _age != user.get("age"):
+        c.execute("UPDATE users SET age=? WHERE id=?", (_age, row["id"]))
+        conn.commit()
+        user["age"] = _age
 
     if not _is_bcrypt_hash(row["password"]):
         c.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(password), row["id"]))
@@ -420,6 +465,95 @@ def save_assessment(
             lifestyle_answers,
         ),
     )
+    conn.commit()
+    conn.close()
+
+
+# ───────────────────────── home screening (consent, 7-day BP, results) ─────────────────────────
+CONSENT_VERSION = "2026-10-v1"
+
+
+def _now():
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def save_consent(user_id, version=CONSENT_VERSION, language="en"):
+    conn = get_conn()
+    conn.execute("INSERT INTO consents (user_id, version, language, created_at) VALUES (?,?,?,?)",
+                 (user_id, version, language, _now()))
+    conn.commit()
+    conn.close()
+
+
+def has_consent(user_id, version=CONSENT_VERSION):
+    conn = get_conn()
+    row = conn.execute("SELECT 1 FROM consents WHERE user_id=? AND version=? LIMIT 1", (user_id, version)).fetchone()
+    conn.close()
+    return row is not None
+
+
+def add_bp_reading(user_id, subject, day_idx, period, systolic, diastolic):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO bp_readings (user_id, subject, day_idx, period, reading_enc, taken_at) VALUES (?,?,?,?,?,?)",
+        (user_id, subject, int(day_idx), period, _encrypt(f"{float(systolic)},{float(diastolic)}"), _now()))
+    conn.commit()
+    conn.close()
+
+
+def get_bp_readings(user_id, subject):
+    """List of (day 1-7, 'am'/'pm', systolic, diastolic), oldest first."""
+    conn = get_conn()
+    rows = conn.execute("SELECT day_idx, period, reading_enc FROM bp_readings WHERE user_id=? AND subject=? ORDER BY id",
+                        (user_id, subject)).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        try:
+            s, d = _decrypt(r["reading_enc"]).split(",")
+            out.append((int(r["day_idx"]), r["period"], float(s), float(d)))
+        except ValueError:
+            continue
+    return out
+
+
+def clear_bp_readings(user_id, subject):
+    conn = get_conn()
+    conn.execute("DELETE FROM bp_readings WHERE user_id=? AND subject=?", (user_id, subject))
+    conn.commit()
+    conn.close()
+
+
+def save_home_screen(user_id, subject, band, inputs, model_version):
+    """inputs: dict of the answers actually used (stored encrypted). Returns nothing."""
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO home_screens (user_id, subject, band, payload_enc, model_version, created_at) VALUES (?,?,?,?,?,?)",
+        (user_id, subject, band, _encrypt(json.dumps(inputs)), model_version, _now()))
+    conn.commit()
+    conn.close()
+
+
+def get_latest_home_screen(user_id, subject):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT band, payload_enc, model_version, created_at FROM home_screens WHERE user_id=? AND subject=? "
+        "ORDER BY id DESC LIMIT 1", (user_id, subject)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    try:
+        payload = json.loads(_decrypt(row["payload_enc"]) or "{}")
+    except ValueError:
+        payload = {}
+    return {"band": row["band"], "inputs": payload, "model_version": row["model_version"], "created_at": row["created_at"]}
+
+
+def delete_home_data(user_id):
+    """Removes every 7-day BP reading and home-screening result of this account (all subjects)."""
+    conn = get_conn()
+    conn.execute("DELETE FROM bp_readings WHERE user_id=?", (user_id,))
+    conn.execute("DELETE FROM home_screens WHERE user_id=?", (user_id,))
     conn.commit()
     conn.close()
 

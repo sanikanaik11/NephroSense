@@ -18,24 +18,35 @@ Needs: pip install torch torchvision pillow numpy opencv-python (opencv only for
 """
 import io
 import os
+import threading
 
 MODEL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "anemia_model.pt"
 )
 IMG_SIZE = 300  # EfficientNet-B3 native input size
 
-MIN_SIDE_PX = 200
-MIN_ROI_FRACTION = 0.012   # pink lining must cover at least this share of the picture
-MIN_REDNESS_CONTRAST = 3.0  # how much redder the lining is than the surrounding skin (Lab a*)
-HARD_BLUR = 6.0            # sharpness of the lining area (Laplacian variance at 256 px) below this = unusable
-SOFT_BLUR = 18.0           # below this = usable but less reliable
-MIN_BRIGHT, MAX_BRIGHT = 30.0, 245.0
+MIN_SIDE_PX = 100  # dataset images are 100–234px; phone photos are larger — accept both
+MIN_ROI_FRACTION = 0.008   # pink lining must cover at least this share of the picture
+MIN_REDNESS_CONTRAST = 2.5  # how much redder the lining is than the surrounding skin (Lab a*)
+HARD_BLUR = 3.0            # sharpness of the lining area (Laplacian variance at 256 px) below this = unusable
+SOFT_BLUR = 12.0           # below this = usable but less reliable
+MIN_BRIGHT, MAX_BRIGHT = 15.0, 245.0  # dark conjunctiva photos are common — allow down to 15
+EYE_MIN_CONFIDENCE = 0.55  # below this the model is "inconclusive" and no score is saved
 
 _model = None
 _device = None
+_load_lock = threading.Lock()
 
 
 def _load_model():
+    """Thread-safe: loads the network once (also pre-loaded in the background at start-up)."""
+    if _model is not None:
+        return _model
+    with _load_lock:
+        return _load_model_unlocked()
+
+
+def _load_model_unlocked():
     global _model, _device
     if _model is not None:
         return _model
@@ -62,8 +73,10 @@ def _load_model():
 def _open_image(image_bytes):
     from PIL import Image, ImageOps
     img = Image.open(io.BytesIO(image_bytes))
-    img = ImageOps.exif_transpose(img)
-    return img.convert("RGB")
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    if max(img.size) > 1280:          # phone photos are 3000+ px; 1280 is plenty and ~10x faster
+        img.thumbnail((1280, 1280))
+    return img
 
 
 def _locate_conjunctiva(img):
@@ -140,16 +153,28 @@ def _white_balance(img):
 
 
 def _tight_rect(mask, cover=0.85, min_frac=0.18):
-    """Largest rectangle that is almost completely lining (not white of the eye / skin / lashes)."""
+    """Largest rectangle that is almost completely lining (not white of the eye / skin / lashes).
+    The search runs on a copy of the mask shrunk to at most 64 px, then maps back (fast on big photos)."""
     import numpy as np
+    import cv2
     ys, xs = np.where(mask)
     if len(ys) == 0:
         return None
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-    sub = mask[y0:y1, x0:x1].astype(np.int32)
+    full = mask[y0:y1, x0:x1].astype(np.float32)
+    FH, FW = full.shape
+    f = max(1.0, max(FH, FW) / 64.0)
+    if f > 1.0:
+        small = cv2.resize(full, (max(1, int(round(FW / f))), max(1, int(round(FH / f)))), interpolation=cv2.INTER_AREA)
+        sub = (small >= 0.5).astype(np.int32)
+        step = 1
+    else:
+        sub = full.astype(np.int32)
+        step = 2
     H, W = sub.shape
+    sx, sy = FW / float(W), FH / float(H)
     ii = np.pad(sub.cumsum(0).cumsum(1), ((1, 0), (1, 0)))
-    cands = [(h, w) for h in range(max(8, H // 6), H + 1, 2) for w in range(max(8, W // 6), W + 1, 2)
+    cands = [(h, w) for h in range(max(8, H // 6), H + 1, step) for w in range(max(8, W // 6), W + 1, step)
              if 0.6 <= w / h <= 2.5]
     cands.sort(key=lambda t: -t[0] * t[1])
     for h, w in cands:
@@ -160,7 +185,8 @@ def _tight_rect(mask, cover=0.85, min_frac=0.18):
             continue
         if S.max() >= cover * h * w:
             yy, xx = np.unravel_index(S.argmax(), S.shape)
-            return int(x0 + xx), int(y0 + yy), int(x0 + xx + w), int(y0 + yy + h)
+            return (int(x0 + min(FW - 1, xx * sx)), int(y0 + min(FH - 1, yy * sy)),
+                    int(x0 + min(FW, (xx + w) * sx)), int(y0 + min(FH, (yy + h) * sy)))
     return None
 
 
@@ -194,12 +220,21 @@ PALE_RG, PALE_A = 1.15, 9.0
 
 
 def _lining_colour(crop):
+    """Colour of the lining. Bright, low-colour pixels (wet shine / glare) and very dark pixels (shadow, lashes)
+    are left out first — shine makes pink tissue look paler than it is — then the MEDIAN is used so a few
+    stray pixels cannot move the result."""
     import cv2
     import numpy as np
     arr = np.array(crop.convert("RGB"))
-    m = arr.reshape(-1, 3).astype(float).mean(0)
-    rg = float(m[0] / max(m[1], 1.0))
-    a = float(cv2.cvtColor(arr, cv2.COLOR_RGB2LAB).astype(float)[..., 1].mean() - 128)
+    hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV).astype(float)
+    S, V = hsv[..., 1] / 255.0, hsv[..., 2]
+    keep = ~(((V >= 200) & (S < 0.30)) | (V < 45))
+    if keep.mean() < 0.25:                       # almost everything was glare/shadow -> use all pixels
+        keep = np.ones(keep.shape, bool)
+    px = arr[keep].astype(float)
+    rg = float(np.median(px[:, 0]) / max(float(np.median(px[:, 1])), 1.0))
+    lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB).astype(float)[..., 1] - 128
+    a = float(np.median(lab[keep]))
     if a < 3 or rg < 1.02:
         cls = "none"
     elif rg >= RED_RG and a >= RED_A:
@@ -237,8 +272,14 @@ def assess_photo(img):
         rr = _refine_crop(crop)
     except Exception:
         rr = None
+    # Only apply refine_crop if the result would still be large enough to measure.
+    # Upscaling a tiny 30×20px crop to 256px introduces artificial smoothness
+    # that fails the sharpness gate — skip refinement for small crops.
     if rr is not None:
-        crop, crop_raw = crop.crop(rr), crop_raw.crop(rr)
+        cw = rr[2] - rr[0]
+        ch = rr[3] - rr[1]
+        if cw >= 30 and ch >= 20:
+            crop, crop_raw = crop.crop(rr), crop_raw.crop(rr)
     colour = _lining_colour(crop)
     if colour["cls"] == "none":
         return {"ok": False, "crop": crop, "message": (
@@ -255,10 +296,14 @@ def assess_photo(img):
         return {"ok": False, "crop": crop, "message": "The eyelid area is overexposed (flash or glare). Move away from direct light."}
     lap = 4 * ga[1:-1, 1:-1] - ga[:-2, 1:-1] - ga[2:, 1:-1] - ga[1:-1, :-2] - ga[1:-1, 2:]
     sharp = float(lap.var())
-    if sharp < HARD_BLUR:
+    # For small crops (<80px wide) that needed upscaling, apply a lower threshold
+    # because bilinear upscaling reduces Laplacian variance artificially.
+    hard_thresh = HARD_BLUR if crop.width >= 80 else 0.8
+    soft_thresh = SOFT_BLUR if crop.width >= 80 else 5.0
+    if sharp < hard_thresh:
         return {"ok": False, "crop": crop, "message": "The eyelid area is too blurry to read. Hold the phone steady, tap the eyelid on the screen to focus, and try again."}
     return {"ok": True, "message": None, "crop": crop, "crop_raw": crop_raw if gains else None,
-            "gains": gains, "soft": sharp < SOFT_BLUR, "colour": colour,
+            "gains": gains, "soft": sharp < soft_thresh, "colour": colour,
             "metrics": {"sharpness": round(sharp, 1), "brightness": round(bright), "area": round(loc["frac"], 3),
                         "redness": round(loc["contrast"], 1)}}
 
@@ -280,7 +325,7 @@ def _prepare_tensor(img):
 
 
 def _predict_prob(crop):
-    """Probability of 'anaemic' for the lining crop; averaged with its mirror image for stability."""
+    """Probability of 'anaemic' for the lining crop (single pass — fast)."""
     import torch
     from PIL import ImageOps
     model = _load_model()
@@ -288,8 +333,7 @@ def _predict_prob(crop):
         return None
     with torch.no_grad():
         p1 = torch.sigmoid(model(_prepare_tensor(crop)).squeeze(1)).item()
-        p2 = torch.sigmoid(model(_prepare_tensor(ImageOps.mirror(crop))).squeeze(1)).item()
-    return (p1 + p2) / 2.0
+    return p1
 
 
 def generate_gradcam(image_bytes):
@@ -335,15 +379,20 @@ def generate_gradcam(image_bytes):
     return Image.fromarray(overlay)
 
 
+LOW_T, HIGH_T = 30, 55          # score < 30 well-coloured | 30-55 in-between | >= 55 pale
+
+
+def eye_tier(score):
+    """0 = well-coloured, 1 = in-between, 2 = pale. The label, the colour and the explanation all use this."""
+    return 0 if score < LOW_T else (1 if score < HIGH_T else 2)
+
+
 def eye_label(score):
-    """Plain-language wording for a 0-100 score (a number like '90%' looks like a risk of disease — it is not)."""
+    """Plain-language result category (the score is capped at 85 — no single photo is that certain)."""
     if score is None:
         return ""
-    if score < 33:
-        return "Lining looks pink"
-    if score < 66:
-        return "Borderline paleness"
-    return "Some paleness seen"
+    return ("Lining looks well-coloured", "In-between — slightly lighter than strong pink",
+            "Looks pale — confirm with a blood test")[eye_tier(score)]
 
 
 _cal_cache = {"loaded": False, "v": None}
@@ -361,6 +410,15 @@ def _colour_calibration():
         except Exception:
             _cal_cache["v"] = None
     return _cal_cache["v"]
+
+
+def calibration_info():
+    """Honest accuracy figures from calibrate_eye_colour.py (cross-validated on real Hb-labelled photos), or None
+    when the colour scale has not been calibrated yet."""
+    cal = _colour_calibration()
+    if not cal:
+        return None
+    return {k: cal.get(k) for k in ("n", "auc_cv", "accuracy_cv", "sensitivity_cv", "specificity_cv")}
 
 
 def colour_paleness_score(colour):
@@ -389,7 +447,7 @@ def _colour_result(a, crop, why):
         score = {"red": 15.0, "mid": 45.0, "pale": 60.0}.get(cls, 45.0)
     notes = {
         "red": "The inner eyelid lining looks well-coloured (pink-red), which makes marked paleness unlikely.",
-        "mid": "The inner eyelid lining looks a little lighter than a strong pink — borderline.",
+        "mid": "The inner eyelid lining is in the in-between range (slightly lighter than strong pink).",
         "pale": "The inner eyelid lining looks lighter than usual.",
     }
     cal = " The colour scale was calibrated on real photos with known haemoglobin." if _colour_calibration() else ""
@@ -400,7 +458,7 @@ def _colour_result(a, crop, why):
         conf = round(conf * 0.85, 3)
     return {"eye_score": score, "eye_confidence": conf, "label": eye_label(score), "note": note, "crop": crop,
             "used_model": False, "quality_issue": False, "soft": bool(a.get("soft")),
-            "colour": colour, "source": "colour"}
+            "colour": colour, "source": "colour", "calibration": calibration_info()}
 
 
 def analyze_eye_image(image_bytes):
@@ -420,39 +478,62 @@ def analyze_eye_image(image_bytes):
                 "crop": a.get("crop")}
     crop = a["crop"]
 
+    # ── Colour-physics score (primary) ────────────────────────────────────────
+    # This is based on directly measured redness of the lining (Lab a* channel
+    # and R/G ratio). It is interpretable and consistent. The AI model gives
+    # 95–98% anemia probability on BOTH anemic and non-anemic images from this
+    # dataset, indicating it is not properly calibrated for standalone use.
+    # We therefore use colour as the primary score and add a small model adjustment.
+    colour_score = colour_paleness_score(a.get("colour") or {"a": 15, "rg": 1.2})
+
     try:
         prob = _predict_prob(crop)
-        if prob is None:
-            return _colour_result(a, crop, "(Colour-only reading: the trained AI model is not available on this computer.)")
-        if a.get("crop_raw") is not None:
-            p_raw = _predict_prob(a["crop_raw"])
-            if p_raw is not None and abs(prob - p_raw) > 0.35:
-                return _colour_result(a, crop, "(The AI model was unstable for this photo's colour tint, so this "
-                                               "reading uses the visible lining colour only.)")
-            if p_raw is not None:
-                prob = (prob + p_raw) / 2.0
-    except Exception as e:
-        return _colour_result(a, crop, "(Colour-only reading: the AI model could not run on this computer.)")
+    except Exception:
+        prob = None
 
-    cls = (a.get("colour") or {}).get("cls")
-    if (prob >= 0.66 and cls == "red") or (prob < 0.33 and cls == "pale"):
-        return _colour_result(a, crop, "(The AI model disagreed with the visible colour, so this reading uses the "
-                                       "lining colour only.)")
-
-    score = round(prob * 100, 1)
-    confidence = round(abs(prob - 0.5) * 2, 3)       # 0 = unsure, 1 = very sure
-    if a.get("soft"):
-        confidence = round(confidence * 0.85, 3)     # slightly soft photo -> a little less trust
-
-    caveat = (" This is a screening hint only. It cannot tell how low your haemoglobin is — a haemoglobin blood "
-              "test is the reliable check.")
-    soft_note = " (The photo was a little soft, so this is less certain.)" if a.get("soft") else ""
-    if score < 33:
-        note = "The inner eyelid lining looks pink." + soft_note + caveat
-    elif score < 66:
-        note = "The inner eyelid lining looks borderline pale." + soft_note + caveat
+    # Model adjustment: if model available AND agrees with colour direction, nudge
+    # the colour score slightly. Never let model alone drive the result.
+    if prob is not None:
+        model_score = prob * 100
+        # Blend: 80% colour physics + 20% model, but only if they agree on direction
+        # (both suggest low paleness or both suggest higher paleness)
+        colour_dir = colour_score > 50
+        model_dir  = model_score > 50
+        if colour_dir == model_dir:
+            blended = 0.80 * colour_score + 0.20 * model_score
+        else:
+            # Disagreement — trust colour completely
+            blended = colour_score
+        score = round(min(blended, 85.0), 1)  # hard cap at 85 — no single photo warrants 94/100
+        used_model = True
+        source = "colour+model"
     else:
-        note = "Some paleness was seen in the inner eyelid lining." + soft_note + caveat
+        score = round(min(colour_score, 85.0), 1)
+        used_model = False
+        source = "colour"
+
+    confidence = round(abs(score - 50) / 50.0, 3)
+    if a.get("soft"):
+        confidence = round(confidence * 0.80, 3)
+
+    soft_note = " The photo was slightly blurry, so this reading is less certain." if a.get("soft") else ""
+    note = (
+        "The inner eyelid lining is well-coloured (pink), so there is no obvious pallor.",
+        "The inner eyelid lining is in the in-between range. This alone does not show anaemia — "
+        "a haemoglobin (Hb) blood test is the reliable check.",
+        "The inner eyelid lining looks paler than typical. Please get a haemoglobin (Hb) blood test.",
+    )[eye_tier(score)] + soft_note
     return {"eye_score": score, "eye_confidence": confidence, "label": eye_label(score), "note": note,
-            "crop": crop, "used_model": True, "quality_issue": False, "soft": bool(a.get("soft")),
-            "colour": a.get("colour"), "source": "model"}
+            "crop": crop, "used_model": used_model, "quality_issue": False, "soft": bool(a.get("soft")),
+            "colour": a.get("colour"), "source": source, "calibration": calibration_info()}
+
+
+def warm_up():
+    """Loads the network in the background when the app starts, so the first photo is not slow."""
+    try:
+        _load_model()
+    except Exception:
+        pass
+
+
+threading.Thread(target=warm_up, daemon=True).start()

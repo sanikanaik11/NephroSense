@@ -26,9 +26,11 @@ When only eye completes:
 """
 
 # ── Fusion weights ────────────────────────────────────────────
+# NOTE: the eye-photo check is "reference only" and is NOT part of any risk score,
+# so its weight is 0. (The app does not import this file; kept consistent in case it is used later.)
 WEIGHTS = {
-    "lifestyle": 0.75,
-    "eye"      : 0.25,
+    "lifestyle": 1.0,
+    "eye"      : 0.0,
 }
 
 # Eye confidence threshold (0.0 to 1.0).

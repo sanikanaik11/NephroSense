@@ -197,7 +197,7 @@ def _parse_notes(raw):
         return {}
 
 
-EYE_MIN_CONFIDENCE = 0.65   # below this the photo model is "inconclusive" and nothing is saved
+EYE_MIN_CONFIDENCE = 0.55   # below this the photo model is "inconclusive" and nothing is saved
 
 
 def _hb_status(u):
@@ -526,7 +526,25 @@ div.st-key-capture_card button[kind="primary"]{
 .ns-dis-t{font-size:11.5px;color:#64748B!important;line-height:1.6;}
 
 
-div.st-key-navpanel{padding:16px 0 24px 24px!important;}
+div.st-key-navpanel{padding:8px 0 24px 24px!important;}
+div.st-key-topbar_row{background:#fff!important;border-bottom:1.5px solid #E2E8F0;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+div.st-key-topbar_row .ns-bar{border-bottom:none!important;box-shadow:none!important;}
+div.st-key-topbar_row [data-testid="stHorizontalBlock"]{align-items:center!important;}
+div.st-key-topbar_row [data-testid="stColumn"]:last-child,div.st-key-topbar_row [data-testid="column"]:last-child{padding-right:20px!important;}
+div.st-key-topbar_row div.stButton{padding-bottom:0!important;}
+div.st-key-home_wrap{padding:0 48px 32px!important;}
+/* 3D depth: consistent layered shadows + hover lift on existing cards */
+.ns-kc,.ns-dis,.ns-hcard,.ns-hf-top,.ns-mod,.ns-sb-card,.stat-row,div.st-key-capture_card{
+  box-shadow:0 1px 2px rgba(15,23,42,.06),0 6px 16px -6px rgba(15,23,42,.14),0 14px 28px -14px rgba(29,78,216,.16)!important;
+  transition:transform .18s ease,box-shadow .18s ease!important;}
+.ns-kc:hover,.ns-dis:hover,.ns-hcard:hover,.ns-mod:hover{
+  transform:translateY(-3px)!important;
+  box-shadow:0 2px 4px rgba(15,23,42,.08),0 12px 24px -8px rgba(15,23,42,.18),0 22px 36px -16px rgba(29,78,216,.24)!important;}
+.ns-welc{box-shadow:0 2px 4px rgba(15,23,42,.10),0 12px 28px -8px rgba(30,58,138,.40)!important;}
+.ns-bar,div.st-key-topbar_row{box-shadow:0 2px 6px rgba(15,23,42,.08),0 8px 18px -10px rgba(15,23,42,.18)!important;}
+div.st-key-topbar_row .ns-bar{box-shadow:none!important;}
+@media (prefers-reduced-motion: reduce){.ns-kc:hover,.ns-dis:hover,.ns-hcard:hover,.ns-mod:hover{transform:none!important;}}
+@media (max-width: 800px){div.st-key-home_wrap{padding:0 16px 24px!important;}}
 @media (max-width: 800px){
   div.st-key-shell [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important;}
   div.st-key-shell [data-testid="column"],
@@ -1036,6 +1054,86 @@ div[data-testid="stImage"] img{ border-radius:12px !important; box-shadow:0 4px 
   *{ transition:none !important; animation:none !important; }
   .ns-kc:hover, .ns-mod:hover, .ns-hcard:hover, .ns-dis:hover{ transform:none !important; }
 }
+
+/* ===== Professional 3D theme (final override block) ===== */
+:root{
+  --ns-bg:linear-gradient(180deg,#FFFFFF 0%,#F6F9FF 100%);
+  --ns-edge:#D9E2F0;
+  --ns-sh:0 1px 0 rgba(255,255,255,.95) inset,0 2px 0 var(--ns-edge),0 12px 24px -12px rgba(15,23,42,.20),0 26px 44px -26px rgba(29,78,216,.28);
+  --ns-sh-hover:0 1px 0 rgba(255,255,255,.95) inset,0 3px 0 var(--ns-edge),0 18px 32px -12px rgba(15,23,42,.24),0 34px 52px -26px rgba(29,78,216,.36);
+}
+.stApp{background:linear-gradient(180deg,#EAF1FF 0%,#F1F5F9 360px)!important;}
+
+/* alignment: one 24px page margin everywhere */
+.ns-bar{padding-left:24px!important;}
+div.st-key-navpanel{padding:8px 0 24px 24px!important;}
+div.st-key-dash_wrap,div.st-key-content_wrap,div.st-key-lifestyle_wrap{padding:8px 24px 24px 20px!important;}
+div.st-key-topbar_row{background:#fff!important;border-bottom:1.5px solid #E2E8F0;
+  box-shadow:0 2px 6px rgba(15,23,42,.08),0 10px 20px -12px rgba(15,23,42,.20)!important;}
+div.st-key-topbar_row .ns-bar{box-shadow:none!important;border-bottom:none!important;}
+
+/* left menu: left-aligned labels so icons and text line up */
+div.st-key-navpanel div.stButton>button{justify-content:flex-start!important;text-align:left!important;padding:12px 18px!important;}
+div.st-key-navpanel div.stButton>button *{text-align:left!important;justify-content:flex-start!important;}
+.ns-sb-card{box-shadow:0 2px 0 #1E3A8A,0 14px 26px -10px rgba(30,58,138,.55)!important;}
+
+/* cards: raised, edged, tilt on hover */
+.ns-kc,.ns-dis,.ns-hcard,.ns-hf-top,.ns-mod,div.st-key-capture_card,.stat-row,
+div[data-testid="stExpander"],div[data-testid="stMetric"]{
+  background:var(--ns-bg)!important;border:1px solid #E2E8F0!important;border-radius:16px!important;
+  box-shadow:var(--ns-sh)!important;transition:transform .18s ease,box-shadow .18s ease!important;}
+.ns-kc:hover,.ns-dis:hover,.ns-hcard:hover,.ns-mod:hover{
+  transform:perspective(900px) translateY(-4px) rotateX(1.5deg)!important;box-shadow:var(--ns-sh-hover)!important;}
+.ns-welc{box-shadow:0 3px 0 #1E3A8A,0 18px 34px -10px rgba(30,58,138,.55)!important;}
+
+/* expanders: same height, spacing and padding as the other cards */
+div[data-testid="stExpander"]{margin-bottom:14px!important;overflow:hidden!important;}
+div[data-testid="stExpander"] details{border:none!important;background:transparent!important;}
+div[data-testid="stExpander"] summary{padding:16px 20px!important;}
+
+/* 3D buttons */
+div.stButton>button[kind="primary"],div[data-testid="stFormSubmitButton"] button{
+  background:linear-gradient(180deg,#3B82F6 0%,#1D4ED8 100%)!important;border:none!important;border-radius:12px!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 0 #1E3A8A,0 12px 20px -6px rgba(29,78,216,.50)!important;
+  transition:transform .12s ease,box-shadow .12s ease!important;}
+div.stButton>button[kind="primary"]:hover,div[data-testid="stFormSubmitButton"] button:hover{transform:translateY(-1px)!important;}
+div.stButton>button[kind="primary"]:active,div[data-testid="stFormSubmitButton"] button:active{
+  transform:translateY(3px)!important;box-shadow:0 1px 0 #1E3A8A,0 4px 8px -2px rgba(29,78,216,.40)!important;}
+div.stButton>button[kind="secondary"]{
+  background:linear-gradient(180deg,#FFFFFF 0%,#F1F5F9 100%)!important;border:1px solid #E2E8F0!important;border-radius:12px!important;
+  box-shadow:0 1px 0 #fff inset,0 3px 0 #D5DEEB,0 10px 16px -8px rgba(15,23,42,.20)!important;
+  transition:transform .12s ease,box-shadow .12s ease!important;}
+div.stButton>button[kind="secondary"]:hover{transform:translateY(-1px)!important;}
+div.stButton>button[kind="secondary"]:active{transform:translateY(2px)!important;box-shadow:0 1px 0 #D5DEEB!important;}
+
+/* front page: hero, headline, stat cards, auth card */
+div.st-key-home_wrap{padding:36px 56px 40px!important;
+  background:radial-gradient(circle at 12% 18%,rgba(59,130,246,.14),transparent 42%),
+             radial-gradient(circle at 92% 8%,rgba(14,165,233,.14),transparent 38%)!important;}
+div.st-key-home_wrap > div > div[data-testid="stHorizontalBlock"]{gap:56px!important;align-items:flex-start!important;}
+div.st-key-home_wrap div[data-testid="stColumn"] div[data-testid="stHorizontalBlock"],
+div.st-key-home_wrap div[data-testid="column"] div[data-testid="stHorizontalBlock"]{gap:14px!important;}
+div.st-key-home_wrap h2{font-size:44px!important;line-height:1.12!important;font-weight:800!important;letter-spacing:-1px!important;}
+div[data-testid="stMetric"]{padding:16px 18px!important;text-align:center!important;}
+div[data-testid="stMetric"] *{justify-content:center!important;text-align:center!important;}
+div[data-testid="stMetricValue"]{font-size:32px!important;font-weight:800!important;color:#1D4ED8!important;}
+div.st-key-auth_card{background:var(--ns-bg)!important;border:1px solid #E2E8F0!important;border-radius:22px!important;
+  padding:28px 30px 20px!important;box-shadow:var(--ns-sh-hover)!important;}
+div.st-key-auth_card div[data-testid="stForm"]{border:none!important;padding:0!important;}
+
+/* inputs: remove the black password-eye block */
+div[data-testid="stTextInput"] [data-baseweb="input"]{background:#fff!important;border-radius:10px!important;overflow:hidden!important;}
+div[data-testid="stTextInput"] [data-baseweb="input"] > div{background:#fff!important;}
+div[data-testid="stTextInput"] [data-baseweb="input"] button{background:transparent!important;}
+div[data-testid="stTextInput"] [data-baseweb="input"] svg{fill:#64748B!important;color:#64748B!important;}
+
+@media (max-width:800px){
+  div.st-key-home_wrap{padding:20px 16px 28px!important;}
+  div.st-key-home_wrap h2{font-size:32px!important;}
+}
+@media (prefers-reduced-motion: reduce){
+  .ns-kc:hover,.ns-dis:hover,.ns-hcard:hover,.ns-mod:hover,div.stButton>button:hover{transform:none!important;}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1098,9 +1196,39 @@ def _hosp_defaults(h):
     return h
 
 
+def _ensure_tiers(results, pool, limit=12):
+    """Every search shows at least one Government / free-low-cost hospital AND one Premium hospital
+    (when one exists in `pool`), whatever budget was chosen."""
+    def key(h):
+        d = h.get("distance_km")
+        return (0 if h.get("nephro") else 1, 0 if h.get("kind", "Hospital") == "Hospital" else 1,
+                d if d is not None else 9999)
+
+    out = list(results)[:limit]
+    names = {h.get("name") for h in out}
+    for tier in ("low", "high"):
+        if any(h.get("budget") == tier for h in out):
+            continue
+        cand = next((h for h in pool if h.get("budget") == tier and h.get("name") not in names), None)
+        if cand is None:
+            continue
+        if len(out) >= limit:
+            for idx in range(len(out) - 1, -1, -1):
+                if out[idx].get("budget") not in ("low", "high"):
+                    out.pop(idx)
+                    break
+            else:
+                out.pop()
+        out.append(cand)
+        names.add(cand.get("name"))
+    out.sort(key=key)
+    return out
+
+
 def find_hosp(city_in, budget):
     """Live search (Geoapify, OSM fallback). Returns (results, found, matched). If nothing exists in the chosen
-    budget, ALL nearby hospitals are returned and matched == "__all__" so the page can say so."""
+    budget, ALL nearby hospitals are returned and matched == "__all__" so the page can say so.
+    Results always include at least one Government/low-cost and one Premium hospital when one can be found."""
     from places_api import search_hospitals_live
 
     bkey = BUDGET_MAP.get(budget)
@@ -1113,7 +1241,18 @@ def find_hosp(city_in, budget):
                 results = filtered
             else:
                 matched = "__all__"
-        return results[:12], bool(live_results), matched
+        pool = list(live_results)
+        if live_results:
+            for tier in ("low", "high"):
+                if not any(h["budget"] == tier for h in pool):      # none nearby -> look wider (150 km)
+                    try:
+                        wide = search_hospitals_live(city_in, max_results=60, radii=(150000,)) or []
+                    except Exception:
+                        wide = []
+                    have = {h["name"] for h in pool}
+                    pool += [h for h in wide if h["budget"] == tier and h["name"] not in have]
+        results = _ensure_tiers(results, pool)
+        return results, bool(live_results), matched
 
     k = city_in.strip().lower()
     k = ALIAS.get(k, k)
@@ -1130,6 +1269,7 @@ def find_hosp(city_in, budget):
             results = filtered
         else:
             matched = "__all__"
+    results = _ensure_tiers(results, base)
     return results, bool(base), matched
 
 
@@ -1139,7 +1279,7 @@ def _status_of(h):
         from places_api import open_status
         return open_status(h.get("hours"))
     except Exception:
-        return None, "Timing not listed — please call to confirm"
+        return None, "Timing not listed here — check on Google or call to confirm"
 
 
 def _hospital_card_html(i, h, city):
@@ -1161,14 +1301,26 @@ def _hospital_card_html(i, h, city):
         w = str(h["website"])
         w = w if w.startswith("http") else "https://" + w
         links += f'<a class="ns-hl b" href="{esc(w)}" target="_blank">🌐 Website / book online</a>'
+    import urllib.parse as _up
+    _gq = _up.quote_plus(f"{h.get('name', '')} {h.get('address', '') or city}")
+    links += (f'<a class="ns-hl b" href="https://www.google.com/maps/search/?api=1&query={_gq}" '
+              f'target="_blank">🕒 Timings on Google</a>')
+    try:
+        from places_api import hours_summary
+        week = hours_summary(h.get("hours"))
+    except Exception:
+        week = ""
     htype = str(h.get("type", ""))
     if htype == "Government":
-        note = ("Appointment: usually walk-in OPD — the registration counter normally opens in the morning. "
-                "Call to confirm the days, timings and the kidney doctor's OPD day.")
+        note = ("Appointment: OPD registration (case paper) is usually done at the hospital counter in the morning, and "
+                "the kidney doctor sits only on fixed OPD days — call to confirm the day. Some government hospitals also "
+                "offer online registration (ors.gov.in).")
     elif htype.startswith("Charitable"):
-        note = ("Appointment: call or visit the hospital desk. Charges are usually lower here — confirm by phone.")
+        note = ("Appointment: call the hospital desk first — the kidney doctor may visit only on certain days, so book "
+                "at least 1 day before if you can. Charges are usually lower here.")
     else:
-        note = "Appointment: call the hospital desk to book a nephrology / physician OPD slot."
+        note = ("Appointment: kidney-specialist visits are usually by prior appointment — book at least 1 day before "
+                "by phone or the hospital website; same-day booking at the reception may not be possible.")
     note += " Timings and doctor availability can change — please call first."
     labels = {"low": "Govt / low cost", "mid": "Mid-range (est.)", "high": "Premium (est.)"}
     classes = {"low": "bb-l", "mid": "bb-m", "high": "bb-h"}
@@ -1178,7 +1330,8 @@ def _hospital_card_html(i, h, city):
         f'<div class="ns-hn">{esc(h.get("name"))}</div>'
         f'<div class="ns-ht">{esc(htype)} {esc(h.get("kind", "Hospital"))}{dist}</div>'
         f'<div class="ns-open {cls}">{icon} {esc(status_text)}</div>'
-        f'<div class="ns-ha">📍 {esc(h.get("address"))}</div>'
+        + (f'<div class="ns-hp">🕒 {esc(week)}</div>' if week else "")
+        + f'<div class="ns-ha">📍 {esc(h.get("address"))}</div>'
         + (f'<div class="ns-hp">📞 {esc(phone)}</div>' if phone else "")
         + f'<div class="ns-htags">{tags}</div><div class="ns-hlinks">{links}</div>'
         f'<div class="ns-hnote">{esc(note)}</div></div>'
@@ -1201,24 +1354,24 @@ def topbar(show_user=False):
         )
     else:
         av = ""
-    col1, col2 = st.columns([10, 1])
-    with col1:
-        st.markdown(
-            f"""
-        <div class="ns-bar">
-            <div class="ns-brand">
-                <div class="ns-brand-ic">🩺</div>
-                <div class="ns-brand-nm">Nephro<b>Sense</b></div>
-            </div>
-            {av}
-        </div>""",
-            unsafe_allow_html=True,
-        )
-    if show_user and u:
-        with col2:
-            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-            if st.button("Logout", key=f"topbar_logout_{st.session_state.page}"):
-                logout()
+    with st.container(key="topbar_row"):
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.markdown(
+                f"""
+            <div class="ns-bar">
+                <div class="ns-brand">
+                    <div class="ns-brand-ic">🩺</div>
+                    <div class="ns-brand-nm">Nephro<b>Sense</b></div>
+                </div>
+                {av}
+            </div>""",
+                unsafe_allow_html=True,
+            )
+        if show_user and u:
+            with col2:
+                if st.button("Logout", key=f"topbar_logout_{st.session_state.page}"):
+                    logout()
 
 
 def render_nav():
@@ -1264,54 +1417,56 @@ def page_home():
     topbar()
     active = st.session_state.auth_tab
 
-    col_l, col_r = st.columns([1, 1], gap="small")
+    with st.container(key="home_wrap"):
+        col_l, col_r = st.columns([1, 1], gap="small")
 
-    with col_l:
-        st.markdown("<div style='height:48px'></div>", unsafe_allow_html=True)
-        st.markdown("🟢 &nbsp; **KIDNEY HEALTH SCREENING PLATFORM**")
-        st.markdown("## Your kidney health, screened *early.*")
-        st.markdown(
-            """
+        with col_l:
+            st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
+            st.markdown("🟢 &nbsp; **KIDNEY HEALTH SCREENING PLATFORM**")
+            st.markdown("## Your kidney health, screened *early.*")
+            st.markdown(
+                """
 NephroSense provides a personalised kidney health assessment
 without any lab visit or blood draw.
 Get a detailed result in minutes.
-            """
-        )
-        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.metric("Global Impact", "850M", help="People with CKD worldwide")
-        with c2:
-            st.metric("CKD Stages", "5", help="All stages detected")
-        with c3:
-            st.metric("Research Sources", "3", help="UCI, Bangladesh & NHANES public datasets")
+                """
+            )
+            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("Global Impact", "850M", help="People with CKD worldwide")
+            with c2:
+                st.metric("CKD Stages", "5", help="All stages detected")
+            with c3:
+                st.metric("Research Sources", "3", help="UCI, Bangladesh & NHANES public datasets")
 
-    with col_r:
-        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+        with col_r:
+            st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
 
-        t1, t2 = st.columns(2, gap="small")
-        with t1:
-            if st.button("Sign In", key="tl", use_container_width=True,
-                         type="primary" if active == "login" else "secondary"):
-                st.session_state.auth_tab = "login"
-                st.rerun()
-        with t2:
-            if st.button("Register", key="tr", use_container_width=True,
-                         type="primary" if active == "register" else "secondary"):
-                st.session_state.auth_tab = "register"
-                st.rerun()
+            with st.container(key="auth_card"):
+                t1, t2 = st.columns(2, gap="small")
+                with t1:
+                    if st.button("Sign In", key="tl", use_container_width=True,
+                                 type="primary" if active == "login" else "secondary"):
+                        st.session_state.auth_tab = "login"
+                        st.rerun()
+                with t2:
+                    if st.button("Register", key="tr", use_container_width=True,
+                                 type="primary" if active == "register" else "secondary"):
+                        st.session_state.auth_tab = "register"
+                        st.rerun()
 
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-        if active == "login":
-            _login()
-        else:
-            _register()
+                if active == "login":
+                    _login()
+                else:
+                    _register()
 
-        st.caption(
-            "NephroSense is a health screening research platform. "
-            "Not a substitute for professional medical diagnosis."
-        )
+                st.caption(
+                    "NephroSense is a health screening research platform. "
+                    "Not a substitute for professional medical diagnosis."
+                )
 
 
 def _login():
@@ -2078,10 +2233,93 @@ def page_lifestyle():
             expanded=bool(st.session_state.get("q_own_description")),
         ):
             st.caption(
-                "Write anything that is not covered by the questions below — for example illnesses or operations "
-                "in your family, past illnesses, or a recent fever. Everything is saved for your doctor. "
-                "After typing, click outside the box (or press Ctrl+Enter) so the points below are picked up."
+                "Type in Marathi, Hindi, or English — family illnesses, past illnesses, operations, recent fever. "
+                "Everything is saved for your doctor."
             )
+            import streamlit.components.v1 as _cv1_mic
+            # Input bar styled like NephroBot; the native text area below is hidden and kept in sync with it.
+            st.markdown(
+                "<style>div.st-key-q_own_description{position:absolute!important;left:-9999px!important;"
+                "height:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;}</style>",
+                unsafe_allow_html=True,
+            )
+            _NOTES_BAR_HTML = r'''<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:transparent;font-family:'Inter',system-ui,sans-serif}
+.wrap{display:flex;flex-direction:column;gap:8px}
+.langs{display:flex;gap:6px;align-items:center}
+.lb{font-size:11.5px;color:#64748B;margin-right:2px}
+.pill{border:1.5px solid #E2E8F0;background:#fff;color:#475569;border-radius:20px;padding:4px 13px;font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+.pill:hover{border-color:#93C5FD;color:#1D4ED8}
+.pill.on{background:#1D4ED8;border-color:#1D4ED8;color:#fff}
+.bar{display:flex;align-items:flex-end;gap:0;background:#1C1C1E;border-radius:22px;padding:14px 12px 14px 20px;box-shadow:0 2px 18px rgba(0,0,0,.22);transition:box-shadow .2s}
+.bar:focus-within{box-shadow:0 2px 18px rgba(0,0,0,.28),0 0 0 2px rgba(59,130,246,.45)}
+.bar textarea{flex:1;min-width:0;background:transparent;border:none;outline:none;resize:none;font-size:15px;color:#F1F5F9;line-height:1.55;min-height:72px;max-height:120px;font-family:'Inter',system-ui,sans-serif;overflow-y:auto;caret-color:#F1F5F9}
+.bar textarea::placeholder{color:#52525B}
+.btns{display:flex;align-items:center;flex-shrink:0;padding-bottom:2px}
+#mic{width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:#71717A;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,transform .12s}
+#mic:hover{color:#E4E4E7;transform:scale(1.1)}
+#mic.active{color:#EF4444;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+#status{font-size:11.5px;color:#64748B;padding-left:6px;min-height:15px}
+#status.active{color:#EF4444;font-weight:600}
+#status.ok{color:#22C55E;font-weight:600}
+#status.err{color:#F87171}
+</style></head><body>
+<div class="wrap">
+<div class="langs"><span class="lb">Speak in:</span>
+<button class="pill" data-l="en-IN">English</button>
+<button class="pill" data-l="hi-IN">हिंदी</button>
+<button class="pill" data-l="mr-IN">मराठी</button></div>
+<div class="bar">
+<textarea id="txt" rows="3" placeholder="Write here… / लिहा… / लिखें…"></textarea>
+<div class="btns"><button id="mic" title="Speak in English, Hindi or Marathi">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-6.5 10.5a.75.75 0 0 1 .75.75 5.75 5.75 0 0 0 11.5 0 .75.75 0 0 1 1.5 0 7.25 7.25 0 0 1-6.5 7.21V21h2a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1 0-1.5h2v-1.54a7.25 7.25 0 0 1-6.5-7.21.75.75 0 0 1 .75-.75z"/></svg></button></div>
+</div>
+<div id="status"></div>
+</div>
+<script>(function(){
+var txt=document.getElementById('txt'),mic=document.getElementById('mic'),st=document.getElementById('status');
+var pills=document.querySelectorAll('.pill');
+var NAMES={'en-IN':'English','hi-IN':'हिंदी','mr-IN':'मराठी'};
+var cur='mr-IN';try{cur=sessionStorage.getItem('ns_doc_lang')||'mr-IN';}catch(e){}
+function paint(){for(var i=0;i<pills.length;i++){pills[i].classList.toggle('on',pills[i].getAttribute('data-l')===cur);}}
+paint();
+function findTA(){try{var d=window.parent.document;return d.querySelector('.st-key-q_own_description textarea')||d.querySelector('textarea[aria-label="Your notes"]');}catch(e){return null;}}
+function resize(){txt.style.height='auto';txt.style.height=Math.min(Math.max(txt.scrollHeight,72),120)+'px';}
+function push(){var ta=findTA();if(!ta||ta.value===txt.value)return;
+ try{var P=window.parent;var set=Object.getOwnPropertyDescriptor(P.HTMLTextAreaElement.prototype,'value').set;
+ set.call(ta,txt.value);ta.dispatchEvent(new P.Event('input',{bubbles:true}));
+ ta.dispatchEvent(new P.FocusEvent('focusout',{bubbles:true}));}catch(e){}}
+var busy=false,rec=null,base='';
+function pull(){var ta=findTA();if(!ta||busy||document.activeElement===txt)return;
+ if(ta.value!==txt.value){txt.value=ta.value;resize();}}
+setTimeout(pull,200);setTimeout(pull,900);setInterval(pull,1500);
+txt.addEventListener('input',resize);
+txt.addEventListener('blur',push);
+window.addEventListener('pagehide',push);
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+for(var i=0;i<pills.length;i++){pills[i].addEventListener('click',function(){
+ cur=this.getAttribute('data-l');try{sessionStorage.setItem('ns_doc_lang',cur);}catch(e){}
+ paint();if(busy&&rec){rec.stop();}else{st.className='';st.textContent='';}});}
+if(!SR){mic.style.display='none';st.className='err';st.textContent='Voice input needs Chrome or Edge.';}
+else{mic.addEventListener('click',function(){
+ if(busy){rec&&rec.stop();return;}
+ base=txt.value.replace(/\s+$/,'');
+ rec=new SR();rec.lang=cur;rec.continuous=true;rec.interimResults=true;
+ rec.onstart=function(){busy=true;mic.classList.add('active');st.className='active';st.textContent='🔴 Listening… ('+NAMES[cur]+') — tap the mic to stop';};
+ rec.onresult=function(e){var f='',it='';
+  for(var i=0;i<e.results.length;i++){if(e.results[i].isFinal){f+=e.results[i][0].transcript;}else{it+=e.results[i][0].transcript;}}
+  var all=(f+it).trim();txt.value=base+(base&&all?' ':'')+all;resize();txt.scrollTop=txt.scrollHeight;};
+ rec.onerror=function(e){busy=false;mic.classList.remove('active');
+  var m={'no-speech':'Nothing heard — tap the mic again.','not-allowed':'Microphone is blocked in the browser.','audio-capture':'No microphone found.','language-not-supported':NAMES[cur]+' is not supported by this browser.'};
+  st.className='err';st.textContent=m[e.error]||('Error: '+e.error);};
+ rec.onend=function(){busy=false;mic.classList.remove('active');txt.value=txt.value.trim();resize();push();
+  if(st.className!=='err'){st.className='ok';st.textContent='✅ Saved';}};
+ try{rec.start();}catch(err){st.className='err';st.textContent='Cannot start: '+err.message;}});}
+})();</script></body></html>'''
+            _cv1_mic.html(_NOTES_BAR_HTML, height=190, scrolling=False)
+
             own_text = st.text_area(
                 "Your notes",
                 key="q_own_description",
@@ -2106,7 +2344,7 @@ def page_lifestyle():
                 "Dipstick self-test kits (available at most pharmacies) are a real, low-cost way "
                 "to get FRESH urine readings when your last lab report is old or you don't have one. "
                 "This app does not automatically read the strip colour — compare your strip to your kit's "
-                "colour chart yourself, then enter the closest matching values in the **Urine Test Results** "
+                "colour chart yourself, tick **I have a urine test report / dipstick result** below, then enter the closest matching values in the **Urine Test Results** "
                 "section below (specific gravity, albumin, sugar) — plus the urine pH field further down."
             )
             dipstick_photo = st.file_uploader(
@@ -2148,10 +2386,37 @@ def page_lifestyle():
         }
 
         answers = {}
-        have_urine = False
-        have_blood = False
         blood_date = None
         urine_date = None
+
+        # Ticking these (outside the form, so the page updates at once) decides which questions appear:
+        # questions about test results are asked ONLY if the person actually has that test.
+        st.markdown('<div class="ns-qsection">📄 Do you have any test results?</div>', unsafe_allow_html=True)
+        st.caption("Tick only what you really have. Questions about test results are shown only for the tests you tick.")
+        have_urine = st.checkbox(
+            "I have a urine test report / dipstick result",
+            key="have_urine",
+        )
+        if have_urine:
+            urine_date = _date_input(
+                "📅 Date of your urine test", "urine_date",
+                "Use the sample collection date printed on the report. Old results count for less.")
+        have_blood = st.checkbox(
+            "I have a blood test report (needed for an accurate result)",
+            key="have_blood",
+        )
+        if have_blood:
+            blood_date = _date_input(
+                "📅 Date of your blood test", "blood_date",
+                "Use the sample collection date printed on the report. Old results count for less.")
+
+        # which scored questions to show: lab questions only when that test is ticked
+        _vis_q = [q for q in QUESTIONS
+                  if not q.get("lab")
+                  or (q["key"] in _URINE_KEYS and have_urine)
+                  or (q["key"] in _BLOOD_KEYS and have_blood)]
+        # symptom-section questions that are really test results (urine report or dipstick)
+        _URINE_TEST_CQ = {"rbc_urine", "pc_urine", "pcc_urine", "ba_urine", "dipstick_ph"}
 
         def render_question(q):
             label = f"{q['label']} ({q['unit']})" if q.get("unit") else q["label"]
@@ -2193,38 +2458,22 @@ def page_lifestyle():
 
         with st.form("lifestyle_form"):
             i = 0
-            n = len(QUESTIONS)
+            n = len(_vis_q)
             while i < n:
-                q = QUESTIONS[i]
+                q = _vis_q[i]
                 if q["key"] in SECTION_AT:
                     st.markdown(
                         f'<div class="ns-qsection">{SECTION_AT[q["key"]]}</div>',
                         unsafe_allow_html=True,
                     )
-                    if q["key"] == "sg":
-                        have_urine = st.checkbox(
-                            "✅ I have a urine test report / dipstick result — use the values below",
-                            key="have_urine",
-                        )
-                        urine_date = _date_input(
-                            "📅 Date of your urine test (needed if you ticked the box above)", "urine_date",
-                            "Use the sample collection date printed on the report. Old results count for less.")
-                    if q["key"] == "bgr":
-                        have_blood = st.checkbox(
-                            "✅ I have a blood test report — use the values below (needed for an accurate result)",
-                            key="have_blood",
-                        )
-                        blood_date = _date_input(
-                            "📅 Date of your blood test (needed if you ticked the box above)", "blood_date",
-                            "Use the sample collection date printed on the report. Old results count for less.")
 
-                next_starts_section = (i + 1 < n) and (QUESTIONS[i + 1]["key"] in SECTION_AT)
+                next_starts_section = (i + 1 < n) and (_vis_q[i + 1]["key"] in SECTION_AT)
                 if i + 1 < n and not next_starts_section:
                     col1, col2 = st.columns(2, gap="medium")
                     with col1:
                         render_question(q)
                     with col2:
-                        render_question(QUESTIONS[i + 1])
+                        render_question(_vis_q[i + 1])
                     i += 2
                 else:
                     render_question(q)
@@ -2236,9 +2485,10 @@ def page_lifestyle():
             )
             st.caption(
                 "These answers feed the transparent Clinical Risk Factor Checklist and the possible-conditions "
-                "panel. Some questions only appear when relevant to your age/gender."
+                "panel. Some questions only appear when relevant to your age/gender, or when you have the related test."
             )
-            visible_cq = visible_clinical_questions(u.get("gender"), answers.get("age", u.get("age", 45)))
+            visible_cq = [cq for cq in visible_clinical_questions(u.get("gender"), answers.get("age", u.get("age", 45)))
+                          if cq["key"] not in _URINE_TEST_CQ or have_urine]
             j = 0
             m = len(visible_cq)
             while j < m:
@@ -2256,6 +2506,9 @@ def page_lifestyle():
 
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("Submit Health Assessment →", use_container_width=True)
+
+        for _q in QUESTIONS:
+            answers.setdefault(_q["key"], _q["default"])
 
         if submitted:
             _errs = []
@@ -2533,7 +2786,7 @@ def page_eye():
                         st.error(result["note"])
                 else:
                     conf = result.get("eye_confidence")
-                    reliable = result.get("source") == "colour" or (conf is not None and conf >= EYE_MIN_CONFIDENCE)
+                    reliable = True  # photo passed the quality check -> always show the score (borderline is shown as borderline)
 
                     if not reliable:
                         st.warning(
@@ -2552,9 +2805,41 @@ def page_eye():
                             risk_level=latest["risk_level"] if latest else None,
                             eye_score=result["eye_score"],
                         )
-                        st.success(f"**{result.get('label') or eye_label(result['eye_score'])}** — paleness index "
-                                   f"**{result['eye_score']:.0f} / 100** (0 = pink, 100 = very pale). Saved to your health "
-                                   "history as reference only; your overall risk is unchanged.")
+                        score = result["eye_score"]
+                        label = result.get("label") or eye_label(score)
+                        src_note = " (colour + AI hint)" if result.get("used_model") else " (colour reading)"
+                        risk_cat   = "Low"      if score < 30 else ("Borderline" if score < 55 else "Higher")
+                        clr        = "#16A34A"  if score < 30 else ("#D97706"    if score < 55 else "#DC2626")
+                        bar_pct    = max(2, min(100, int(score)))
+                        _cal = result.get("calibration") or {}
+                        if _cal.get("sensitivity_cv") is not None and _cal.get("specificity_cv") is not None:
+                            _rel = (f"Colour scale checked on {_cal.get('n')} real photos with known haemoglobin (cross-validated): "
+                                    f"it picks up about {_cal['sensitivity_cv'] * 100:.0f}% of anaemic cases and correctly clears "
+                                    f"about {_cal['specificity_cv'] * 100:.0f}% of normal ones. It can miss mild anaemia.")
+                        else:
+                            _rel = ("This colour scale has not yet been validated against blood tests, so treat the number as a "
+                                    "rough hint, not a measurement. It can miss mild anaemia.")
+                        st.markdown(f"""
+<div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:14px;padding:18px 20px;margin-bottom:10px;">
+  <div style="font-size:13px;font-weight:700;color:#0F172A;margin-bottom:10px;">
+    &#128065;&#65039; Visual Anemia Screening{src_note}
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+    <div style="font-size:32px;font-weight:900;color:{clr};line-height:1;">{score:.0f}<span style="font-size:13px;font-weight:400;color:#94A3B8;">/100</span></div>
+    <div>
+      <div style="font-size:15px;font-weight:700;color:{clr};">{label}</div>
+      <div style="font-size:12px;color:#64748B;">Pallor level: <b>{risk_cat}</b> &nbsp;·&nbsp; 0 = pink &nbsp;·&nbsp; 100 = very pale</div>
+    </div>
+  </div>
+  <div style="height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden;margin-bottom:10px;">
+    <div style="height:100%;width:{bar_pct}%;background:{clr};border-radius:4px;"></div>
+  </div>
+  <div style="font-size:11.5px;color:#475569;margin-bottom:8px;">{_rel}</div>
+  <div style="font-size:11.5px;color:#92400E;background:#FFF7ED;border:1px solid #FDE68A;border-radius:8px;padding:8px 12px;">
+    &#9888;&#65039; <b>Experimental screening only</b> — cannot diagnose anemia or kidney disease.
+    Always confirm with a haemoglobin (Hb) blood test. Saved to history as a reference only.
+  </div>
+</div>""", unsafe_allow_html=True)
                         st.info(result["note"])
 
                     if hb_state == "normal":
@@ -2563,9 +2848,14 @@ def page_eye():
                             "not anaemic. A blood test is far more reliable than a phone photo — please rely on it."
                         )
                     elif hb_state == "low":
+                        _male = str(u.get("gender", "")).strip().lower().startswith("m")
                         st.warning(
-                            f"Your latest blood report shows **low haemoglobin ({hb_val:.1f} g/dL)**. "
-                            "Please discuss this with a doctor."
+                            f"Your latest blood report shows **low haemoglobin ({hb_val:.1f} g/dL)** — below the usual "
+                            f"cut-off of {13 if _male else 12} g/dL for {'men' if _male else 'women'}. Labs differ slightly, "
+                            "and a wrongly typed or misread value can cause this, so please check the number against "
+                            "your report and discuss it with a doctor."
+                            + (" Note: your photo reading and your blood report differ — mild anaemia often looks normal in "
+                               "a photo, so the blood report is the reliable one." if result["eye_score"] < 30 else "")
                         )
 
                     if st.button("🏠 View Dashboard →", use_container_width=True, key="dash_after_eye"):
@@ -2593,15 +2883,17 @@ def _patient_context(u):
 
 def page_chatbot():
     u = st.session_state.user
+    import streamlit.components.v1 as _cv1
+    import json as _json
 
     with st.container(key="content_wrap"):
         st.markdown(
             """
         <div class="ns-hf-top">
             <div style="width:44px;height:44px;background:linear-gradient(135deg,#1D4ED8,#3B82F6);
-                        border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">💬</div>
+                        border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">\U0001f4ac</div>
             <div>
-                <div class="ns-hft">NephroBot — ask about kidney or any health topic</div>
+                <div class="ns-hft">NephroBot \u2014 ask about kidney or any health topic</div>
             </div>
         </div>""",
             unsafe_allow_html=True,
@@ -2610,36 +2902,309 @@ def page_chatbot():
         if "chatbot_history" not in st.session_state:
             st.session_state["chatbot_history"] = []
 
+        # ── Chat history + per-reply speaker buttons ──────────────────────────
+        # HOW THE SPEAKER BUTTON WORKS:
+        #   Each assistant reply gets its own st.components.v1.html() block
+        #   keyed by the message _id.  The block is a self-contained HTML page
+        #   that holds the full reply text in a <textarea> element (not a JS
+        #   variable) so special chars, quotes, and Devanagari never break JS.
+        #   The button uses window.speechSynthesis to speak the text.
+        #   Because each block has a unique key, Streamlit does not reuse it
+        #   across reruns — the DOM is stable and the button stays visible.
+        from chatbot import _detect_language as _dlang
+
         chat_box = st.container()
         with chat_box:
             for msg in st.session_state["chatbot_history"]:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
 
+                # Speaker button — only for assistant messages
+                if msg["role"] == "assistant":
+                    # Determine language of this reply
+                    i = st.session_state["chatbot_history"].index(msg)
+                    stored_lang = msg.get("_lang", "")
+                    if not stored_lang:
+                        # Find preceding user message
+                        for prev in reversed(st.session_state["chatbot_history"][:i]):
+                            if prev["role"] == "user":
+                                stored_lang = _dlang(prev["content"])
+                                break
+                        if not stored_lang:
+                            stored_lang = "english"
+
+                    msg_uid = str(msg.get("_id", abs(hash(msg["content"][:30]))))
+
+                    bcp_lang = {"marathi": "mr-IN", "hindi": "hi-IN"}.get(stored_lang, "en-IN")
+
+                    # Safe-encode the reply text for embedding in HTML
+                    # Use JSON encode → safe ASCII + unicode escapes
+                    safe_text = _json.dumps(msg["content"], ensure_ascii=True)
+
+                    bcp_json  = _json.dumps(bcp_lang)
+                    lang_json = _json.dumps(stored_lang)
+
+                    speaker_html = (
+                        "<!DOCTYPE html><html><head><meta charset='utf-8'><style>"
+                        "body{margin:0;padding:0;background:transparent;font-family:'Inter',system-ui,sans-serif}"
+                        "#spk{"
+                        "display:inline-flex;align-items:center;gap:6px;"
+                        "border:1.5px solid #E2E8F0;background:#F8FAFC;"
+                        "border-radius:20px;padding:5px 14px;"
+                        "font-size:12.5px;color:#475569;cursor:pointer;"
+                        "transition:all .15s;white-space:nowrap;"
+                        "font-family:'Inter',system-ui,sans-serif;"
+                        "}"
+                        "#spk:hover{background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8}"
+                        "#spk.playing{background:#EFF6FF;border-color:#3B82F6;color:#1D4ED8;font-weight:600}"
+                        "#st{font-size:11px;color:#94A3B8;margin-left:6px;display:inline}"
+                        "</style></head><body>"
+                        "<button id='spk'>\U0001f50a Read aloud</button>"
+                        "<span id='st'></span>"
+                        "<script>"
+                        "(function(){"
+                        "var TEXT=" + safe_text + ";"
+                        "var BCP=" + bcp_json + ";"
+                        "var LANG=" + lang_json + ";"
+                        "var btn=document.getElementById('spk');"
+                        "var st=document.getElementById('st');"
+                        "var synth=window.speechSynthesis;"
+                        "var playing=false;"
+                        # clean markdown
+                        "function clean(s){"
+                        "return s"
+                        ".replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g,'$1')"
+                        ".replace(/https?:\\/\\/\\S+/g,'')"
+                        ".replace(/[*_`#>~|]/g,'')"
+                        ".replace(/^\\s*[-\\u2022]\\s*/gm,'')"
+                        ".replace(/\\s{2,}/g,' ').trim();}"
+                        # wait for voices
+                        "function getVoices(cb){"
+                        "var v=synth.getVoices();"
+                        "if(v&&v.length){cb(v);return;}"
+                        "if('onvoiceschanged'in synth){"
+                        "var h=function(){synth.removeEventListener('voiceschanged',h);cb(synth.getVoices());};"
+                        "synth.addEventListener('voiceschanged',h);"
+                        "setTimeout(function(){cb(synth.getVoices()||[]);},3000);"
+                        "}else{setTimeout(function(){cb(synth.getVoices()||[]);},600);}}"
+                        # pick voice
+                        "function pickVoice(voices){"
+                        "var order=LANG==='marathi'?['mr-IN','mr','hi-IN','hi','en-IN','en']"
+                        ":LANG==='hindi'?['hi-IN','hi','mr-IN','en-IN','en']"
+                        ":['en-IN','en-GB','en-US','en'];"
+                        "for(var i=0;i<order.length;i++){"
+                        "var p=order[i];"
+                        "var v=voices.find(function(x){return x.lang===p;})"
+                        "||voices.find(function(x){return x.lang.startsWith(p.split('-')[0]);});"
+                        "if(v)return v;}"
+                        "return voices[0]||null;}"
+                        # stop
+                        "function stop(){"
+                        "synth.cancel();playing=false;"
+                        "btn.classList.remove('playing');"
+                        "btn.innerHTML='\U0001f50a Read aloud';"
+                        "st.textContent='';}"
+                        # speak
+                        "function doSpeak(){"
+                        "stop();"
+                        "var txt=clean(TEXT);"
+                        "if(!txt)return;"
+                        "playing=true;"
+                        "btn.classList.add('playing');"
+                        "btn.innerHTML='\u23f9\ufe0f Stop';"
+                        "st.textContent='Loading\u2026';"
+                        "getVoices(function(voices){"
+                        "var voice=pickVoice(voices);"
+                        "if(voice)st.textContent='('+ voice.lang+')';"
+                        "else st.textContent='';"
+                        # split on sentence boundaries to avoid Chrome 15s cutoff
+                        "var parts=txt.match(/[^\\u0964\\u0965.!?]+[\\u0964\\u0965.!?]*/g)||[txt];"
+                        "var idx=0;"
+                        "function next(){"
+                        "if(idx>=parts.length||!playing){stop();return;}"
+                        "var seg=parts[idx++].trim();"
+                        "if(!seg){next();return;}"
+                        "var u=new SpeechSynthesisUtterance(seg);"
+                        "u.lang=BCP;u.rate=0.87;u.pitch=1.0;"
+                        "if(voice)u.voice=voice;"
+                        "u.onend=next;"
+                        "u.onerror=function(ev){stop();st.textContent='Error: '+(ev.error||'');};"
+                        "synth.speak(u);}"
+                        "next();});}"
+                        "btn.addEventListener('click',function(){"
+                        "if(playing){stop();}else{doSpeak();}});"
+                        "window.addEventListener('beforeunload',function(){synth.cancel();});"
+                        "})();"
+                        "</script></body></html>"
+                    )
+                    _cv1.html(speaker_html, height=40, scrolling=False)
+
         if st.session_state["chatbot_history"]:
-            if st.button("🗑️ Clear chat", key="clear_chatbot_btn"):
+            if st.button("\U0001f5d1\ufe0f Clear chat", key="clear_chatbot_btn"):
                 st.session_state["chatbot_history"] = []
                 st.rerun()
 
-        user_msg = st.chat_input("Type your question here...")
+        # ── Input bar with mic ────────────────────────────────────────────────
+        import streamlit.components.v1 as _c
+
+        bar_html = (
+            "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>"
+            "*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}"
+            "html,body{background:transparent;font-family:'Inter',system-ui,sans-serif}"
+            ".wrap{display:flex;flex-direction:column;gap:6px}"
+            ".bar{display:flex;align-items:flex-end;gap:0;background:#1C1C1E;border-radius:22px;"
+            "padding:14px 12px 14px 20px;box-shadow:0 2px 18px rgba(0,0,0,.22);transition:box-shadow .2s}"
+            ".bar:focus-within{box-shadow:0 2px 18px rgba(0,0,0,.28),0 0 0 2px rgba(59,130,246,.45)}"
+            ".bar textarea{flex:1;min-width:0;background:transparent;border:none;outline:none;resize:none;"
+            "font-size:15px;color:#F1F5F9;line-height:1.55;min-height:22px;max-height:160px;"
+            "font-family:'Inter',system-ui,sans-serif;overflow-y:auto;caret-color:#F1F5F9}"
+            ".bar textarea::placeholder{color:#52525B}"
+            ".btns{display:flex;align-items:center;gap:2px;flex-shrink:0;padding-bottom:2px}"
+            "#mic{width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:#71717A;"
+            "cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,transform .12s;flex-shrink:0}"
+            "#mic:hover{color:#E4E4E7;transform:scale(1.1)}"
+            "#mic.active{color:#EF4444;animation:pulse 1s ease-in-out infinite}"
+            "@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}"
+            "#send{width:36px;height:36px;border-radius:50%;border:none;background:#2563EB;color:#fff;"
+            "cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .12s;flex-shrink:0}"
+            "#send:hover{background:#1D4ED8;transform:scale(1.08)}"
+            "#send:active{transform:scale(.92)}"
+            "#send:disabled{background:#27272A;cursor:not-allowed}"
+            "#send:disabled svg{opacity:.35}"
+            "#status{font-size:11.5px;color:#52525B;padding-left:6px;min-height:15px;transition:color .2s}"
+            "#status.active{color:#EF4444;font-weight:600}"
+            "#status.ok{color:#22C55E;font-weight:600}"
+            "#status.err{color:#F87171}"
+            "#nosup{font-size:12px;color:#A1A1AA;padding:0 6px}"
+            "</style></head><body>"
+            "<div class='wrap'>"
+            "<div class='bar'>"
+            "<textarea id='txt' rows='1' placeholder='Ask NephroBot\u2026 / \u0935\u093f\u091a\u093e\u0930\u093e\u2026 / \u092a\u0942\u091b\u0947\u0902\u2026'></textarea>"
+            "<div class='btns'>"
+            "<button id='mic' title='Speak in Marathi, Hindi or English'>"
+            "<svg width='20' height='20' viewBox='0 0 24 24' fill='currentColor'>"
+            "<path d='M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-6.5 10.5a.75.75 0 0 1 .75.75 5.75 5.75 0 0 0 11.5 0 .75.75 0 0 1 1.5 0 7.25 7.25 0 0 1-6.5 7.21V21h2a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1 0-1.5h2v-1.54a7.25 7.25 0 0 1-6.5-7.21.75.75 0 0 1 .75-.75z'/>"
+            "</svg></button>"
+            "<button id='send' disabled title='Send'>"
+            "<svg width='15' height='15' viewBox='0 0 24 24' fill='currentColor'>"
+            "<path d='M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405z'/>"
+            "</svg></button>"
+            "</div></div>"
+            "<div id='status'></div>"
+            "<div id='nosup'></div>"
+            "</div>"
+            "<script>(function(){"
+            "var txt=document.getElementById('txt');"
+            "var mic=document.getElementById('mic');"
+            "var send=document.getElementById('send');"
+            "var status=document.getElementById('status');"
+            "var nosup=document.getElementById('nosup');"
+            "function resize(){txt.style.height='auto';txt.style.height=Math.min(txt.scrollHeight,160)+'px';}"
+            "txt.addEventListener('input',function(){resize();send.disabled=!txt.value.trim();});"
+            "function doSend(){"
+            "var v=txt.value.trim();if(!v)return;"
+            "try{window.sessionStorage.setItem('ns_cb_msg',JSON.stringify({t:v,ts:Date.now()}));}catch(e){}"
+            "txt.value='';resize();send.disabled=true;status.className='';status.textContent='';}"
+            "send.addEventListener('click',doSend);"
+            "txt.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();}});"
+            "var SR=window.SpeechRecognition||window.webkitSpeechRecognition;"
+            "if(!SR){mic.style.display='none';nosup.textContent='Voice input needs Chrome or Edge.';}"
+            "else{"
+            "var rec=null,busy=false,finalT='';"
+            "function startRec(lc,retry){"
+            "rec=new SR();rec.lang=lc;rec.continuous=false;rec.interimResults=true;rec.maxAlternatives=3;"
+            "rec.onstart=function(){busy=true;mic.classList.add('active');status.className='active';"
+            "status.textContent=lc==='mr-IN'?'\U0001f534 \u090f\u0948\u0915\u0924\u094b\u2026 (Marathi/Hindi/English)':'\U0001f534 Listening\u2026';};"
+            "rec.onresult=function(e){var fin='',it='';"
+            "for(var i=e.resultIndex;i<e.results.length;i++){"
+            "if(e.results[i].isFinal){"
+            "var best=e.results[i][0].transcript;"
+            "for(var j=0;j<e.results[i].length;j++){if(/[\\u0900-\\u097F]/.test(e.results[i][j].transcript)){best=e.results[i][j].transcript;break;}}"
+            "fin+=best;}else{it+=e.results[i][0].transcript;}}"
+            "if(fin)finalT+=fin;txt.value=finalT+it;resize();send.disabled=!txt.value.trim();};"
+            "rec.onerror=function(e){"
+            "busy=false;mic.classList.remove('active');"
+            "var m={'no-speech':'Nothing heard \u2014 tap mic again.','not-allowed':'Mic blocked.','audio-capture':'No mic found.'};"
+            "status.className='err';status.textContent=m[e.error]||'Error: '+e.error;};"
+            "rec.onend=function(){"
+            "busy=false;mic.classList.remove('active');"
+            "if(finalT.trim()){"
+            "var hasD=/[\\u0900-\\u097F]/.test(finalT);"
+            "if(!retry&&!hasD&&lc==='mr-IN'&&finalT.trim().split(/\\s+/).length<=4){"
+            "finalT='';txt.value='';status.className='active';status.textContent='\U0001f504 Retrying in English\u2026';"
+            "setTimeout(function(){startRec('en-IN',true);},200);return;}"
+            "txt.value=finalT.trim();resize();send.disabled=false;"
+            "status.className='ok';status.textContent='\u2705 Press Enter or \u27a4 to send';txt.focus();"
+            "}else if(status.className!=='err'){status.className='';status.textContent='';}};"
+            "try{rec.start();}catch(err){status.className='err';status.textContent='Cannot start: '+err.message;}}"
+            "mic.addEventListener('click',function(){if(busy){rec&&rec.stop();return;}finalT='';startRec('mr-IN',false);});}"
+            "})();</script></body></html>"
+        )
+
+        _c.html(bar_html, height=115, scrolling=False)
+
+        # ── Polling bridge: JS sessionStorage → Streamlit ────────────────────
+        _poll = (
+            "<script>(function(){"
+            "function poll(){"
+            "try{"
+            "var raw=window.sessionStorage.getItem('ns_cb_msg');"
+            "if(!raw)return;"
+            "var obj=JSON.parse(raw);"
+            "if(Date.now()-obj.ts>8000){window.sessionStorage.removeItem('ns_cb_msg');return;}"
+            "window.sessionStorage.removeItem('ns_cb_msg');"
+            "var ta=window.parent.document.querySelector('textarea[data-testid=\"stChatInputTextArea\"]');"
+            "if(!ta)return;"
+            "var setter=Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set;"
+            "setter.call(ta,obj.t);"
+            "ta.dispatchEvent(new Event('input',{bubbles:true}));"
+            "setTimeout(function(){"
+            "ta.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));"
+            "},80);"
+            "}catch(e){}}"
+            "setInterval(poll,300);"
+            "})();</script>"
+        )
+        _cv1.html(_poll, height=0, scrolling=False)
+
+        # ── Hidden native chat_input ──────────────────────────────────────────
+        st.markdown("""<style>
+[data-testid="stChatInput"]{
+  opacity:0!important;height:0!important;min-height:0!important;
+  overflow:hidden!important;padding:0!important;margin:0!important;
+  pointer-events:none!important;position:absolute!important;
+}
+</style>""", unsafe_allow_html=True)
+
+        user_msg = st.chat_input("Ask NephroBot\u2026")
         if user_msg:
+            import time as _time
+            from chatbot import _detect_language as _dl2
             st.session_state["chatbot_history"].append({"role": "user", "content": user_msg})
             with chat_box:
                 with st.chat_message("user"):
                     st.markdown(user_msg)
                 with st.chat_message("assistant"):
-                    # the answer appears word by word as it is written instead of after a long wait
-                    with st.spinner("NephroBot is typing…"):
+                    with st.spinner("NephroBot is typing\u2026"):
                         reply = st.write_stream(
-                            stream_chatbot_reply(st.session_state["chatbot_history"], _patient_context(u)))
+                            stream_chatbot_reply(
+                                st.session_state["chatbot_history"],
+                                _patient_context(u),
+                            )
+                        )
                     if isinstance(reply, list):
                         reply = "".join(str(x) for x in reply)
                     reply = (reply or "").strip()
                     if reply:
-                        st.session_state["chatbot_history"].append({"role": "assistant", "content": reply})
+                        st.session_state["chatbot_history"].append({
+                            "role":    "assistant",
+                            "content": reply,
+                            "_id":     int(_time.time() * 1000),
+                            "_lang":   _dl2(user_msg),
+                        })
+                        st.rerun()  # rerun so speaker button renders immediately below reply
                     else:
                         st.error("NephroBot could not answer right now. Please try again.")
-
 
 def page_find_hospital():
     u = st.session_state.user
@@ -2697,10 +3262,15 @@ def page_find_hospital():
                         f'kidney-care first, then nearest</div>',
                         unsafe_allow_html=True,
                     )
+                    _missing = [n for k, n in (("low", "Government / free"), ("high", "Premium"))
+                                if not any(h.get("budget") == k for h in results)]
+                    if _missing:
+                        st.info("No " + " or ".join(_missing) + " hospital was found within 150 km in open map data. "
+                                "Try a nearby larger city.")
                     for i, h in enumerate(results, 1):
                         st.markdown(_hospital_card_html(i, h, city), unsafe_allow_html=True)
                     st.caption(
-                        "Opening hours come from public map data and may be missing or out of date, so please call before "
+                        "Opening hours come from public map data and may be missing or out of date — tap “Timings on Google” or call before "
                         "you go. Budget group is an estimate (Government / charitable = low cost; large or branded private "
                         "hospitals = premium). For emergencies call 112. Free online doctor consultation: "
                         "eSanjeevani (esanjeevani.mohfw.gov.in)."

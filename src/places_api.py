@@ -241,7 +241,7 @@ def open_status(oh, now=None):
     """-> (state, text): state is 'open' | 'closed' | None (hours not listed / not understood)."""
     sched = parse_hours(oh)
     if sched is None:
-        return None, "Timing not listed — please call to confirm"
+        return None, "Timing not listed here — check on Google or call to confirm"
     now = now or datetime.now(IST)
     d, mins = now.weekday(), now.hour * 60 + now.minute
     if all(sched[x] == [(0, 1440)] for x in range(7)):
@@ -262,6 +262,31 @@ def open_status(oh, now=None):
                 when = "today" if add == 0 else ("tomorrow" if add == 1 else _DAY_NAMES[day])
                 return "closed", f"Closed now · opens {when} {_fmt(s)}"
     return "closed", "Closed now"
+
+
+def hours_summary(oh):
+    """Full weekly timing in plain words, e.g. 'Mon–Sat: 9:00 AM – 5:00 PM · Sun: Closed'. '' if not listed."""
+    sched = parse_hours(oh)
+    if sched is None:
+        return ""
+    if all(sched[d] == [(0, 1440)] for d in range(7)):
+        return "Open 24 hours, all days"
+
+    def spans_txt(sp):
+        return "Closed" if not sp else ", ".join(f"{_fmt(s)} – {_fmt(e)}" for s, e in sorted(sp))
+
+    groups = []
+    for d in range(7):
+        txt = spans_txt(sched[d])
+        if groups and groups[-1][2] == txt and groups[-1][1] == d - 1:
+            groups[-1][1] = d
+        else:
+            groups.append([d, d, txt])
+    parts = []
+    for a, b, txt in groups:
+        label = _DAY_NAMES[a] if a == b else f"{_DAY_NAMES[a]}–{_DAY_NAMES[b]}"
+        parts.append(f"{label}: {txt}")
+    return " · ".join(parts)
 
 
 # ───────────────────────── Geoapify ─────────────────────────
