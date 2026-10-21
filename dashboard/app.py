@@ -1127,9 +1127,230 @@ div[data-testid="stTextInput"] [data-baseweb="input"] > div{background:#fff!impo
 div[data-testid="stTextInput"] [data-baseweb="input"] button{background:transparent!important;}
 div[data-testid="stTextInput"] [data-baseweb="input"] svg{fill:#64748B!important;color:#64748B!important;}
 
-@media (max-width:800px){
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — TABLET (≤900px)
+   ═══════════════════════════════════════════════════ */
+@media (max-width:900px){
   div.st-key-home_wrap{padding:20px 16px 28px!important;}
   div.st-key-home_wrap h2{font-size:32px!important;}
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤640px)
+   Covers both the login/register home page AND the
+   logged-in shell (nav + content columns).
+   ═══════════════════════════════════════════════════ */
+@media (max-width:640px){
+
+  /* ── 0. Global overflow guard ── */
+  html, body,
+  .stApp,
+  [data-testid="stAppViewContainer"],
+  [data-testid="stMainBlockContainer"],
+  [data-testid="stVerticalBlock"]{
+    overflow-x:hidden!important;
+    max-width:100vw!important;
+  }
+
+  /* ── 1. Topbar ── */
+  .ns-bar{padding:0 12px!important;height:52px!important;}
+  .ns-brand-nm{font-size:15px!important;}
+
+  /* ── 2. HOME PAGE — hero + auth card ──────────────────────
+     The outer home_wrap container */
+  div.st-key-home_wrap{
+    padding:12px 10px 20px!important;
+    overflow-x:hidden!important;
+  }
+
+  /* Stack the left-hero and right-auth columns vertically.
+     Streamlit sets width AND flex via INLINE styles on the column div.
+     We must use !important on every axis to override them. */
+  div.st-key-home_wrap [data-testid="stHorizontalBlock"]{
+    flex-direction:column!important;
+    flex-wrap:wrap!important;
+    gap:0!important;
+    align-items:stretch!important;
+    width:100%!important;
+    max-width:100%!important;
+  }
+  /* target both the outer column wrapper and its immediate first child
+     (Streamlit wraps column content in an extra div) */
+  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
+    > [data-testid="stColumn"],
+  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
+    > [data-testid="column"],
+  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
+    > [data-testid="stColumn"] > div,
+  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
+    > [data-testid="column"] > div{
+    flex:1 1 100%!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Hero text */
+  div.st-key-home_wrap h2{
+    font-size:26px!important;
+    line-height:1.2!important;
+    letter-spacing:-.5px!important;
+  }
+  div.st-key-home_wrap p{font-size:14px!important;line-height:1.55!important;}
+
+  /* Hide the 3-column metric stats row on mobile */
+  div.st-key-home_wrap [data-testid="stMetric"]{display:none!important;}
+  /* Also hide the stHorizontalBlock that ONLY contains metrics
+     (the stats row — 3rd stHorizontalBlock inside the left col) */
+  div.st-key-home_wrap [data-testid="stColumn"]:first-child
+    [data-testid="stHorizontalBlock"]:last-child,
+  div.st-key-home_wrap [data-testid="column"]:first-child
+    [data-testid="stHorizontalBlock"]:last-child{
+    display:none!important;
+  }
+
+  /* ── 3. AUTH CARD (login / register form) ── */
+  div.st-key-auth_card{
+    padding:16px 12px 14px!important;
+    border-radius:14px!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    margin-top:8px!important;
+  }
+
+  /* Sign In / Register toggle buttons row — keep side by side, fit screen */
+  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child,
+  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child{
+    flex-direction:row!important;
+    gap:8px!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+  }
+  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child
+    > [data-testid="stColumn"],
+  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child
+    > [data-testid="column"]{
+    flex:1 1 0!important;
+    min-width:0!important;
+    max-width:50%!important;
+  }
+
+  /* All buttons inside auth card */
+  div.st-key-auth_card div.stButton > button{
+    width:100%!important;
+    min-width:0!important;
+    font-size:13px!important;
+    padding:10px 4px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  /* Form inputs and selects */
+  div.st-key-auth_card [data-testid="stTextInput"],
+  div.st-key-auth_card [data-testid="stTextInput"] input,
+  div.st-key-auth_card [data-testid="stSelectbox"],
+  div.st-key-auth_card [data-baseweb="input"]{
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Submit buttons (Sign in →, Continue →, Create account →) */
+  div.st-key-auth_card [data-testid="stFormSubmitButton"] button{
+    width:100%!important;
+    min-width:0!important;
+    font-size:14px!important;
+  }
+
+  /* Reg step-2: back + continue cols → stack vertically */
+  div.st-key-auth_card [data-testid="stHorizontalBlock"]:not(:first-child){
+    flex-wrap:wrap!important;
+  }
+  div.st-key-auth_card [data-testid="stHorizontalBlock"]:not(:first-child)
+    > [data-testid="stColumn"],
+  div.st-key-auth_card [data-testid="stHorizontalBlock"]:not(:first-child)
+    > [data-testid="column"]{
+    flex:1 1 100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  /* ── 4. LOGGED-IN SHELL — nav + content ──────────────────
+     st.columns([1, 4.2]) creates a narrow nav + wide content.
+     On mobile we stack them: nav on top, content below.
+     Must override Streamlit's inline width/flex styles. */
+  div.st-key-shell > div > [data-testid="stHorizontalBlock"]{
+    flex-direction:column!important;
+    flex-wrap:wrap!important;
+    gap:0!important;
+    width:100%!important;
+    max-width:100%!important;
+  }
+  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
+    > [data-testid="stColumn"],
+  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
+    > [data-testid="column"],
+  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
+    > [data-testid="stColumn"] > div,
+  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
+    > [data-testid="column"] > div{
+    flex:1 1 100%!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Nav panel: compact, full width */
+  div.st-key-navpanel{
+    padding:8px 10px 12px!important;
+    width:100%!important;
+  }
+  div.st-key-navpanel div.stButton > button{
+    font-size:14px!important;
+    padding:10px 14px!important;
+  }
+
+  /* Content/dashboard wrap */
+  div.st-key-dash_wrap,
+  div.st-key-content_wrap,
+  div.st-key-lifestyle_wrap{
+    padding:8px 10px 20px!important;
+    width:100%!important;
+  }
+
+  /* ns-sb-card inside navpanel — show as horizontal strip */
+  .ns-sb-card{
+    border-radius:12px!important;
+    padding:12px!important;
+    margin-bottom:8px!important;
+  }
+  .ns-sb-grid{
+    grid-template-columns:repeat(4,1fr)!important;
+    gap:6px!important;
+  }
+
+  /* Welcome banner in dashboard — stack instead of space-between */
+  .ns-welc{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    gap:10px!important;
+    padding:16px 14px!important;
+  }
+  .nw-box{align-self:stretch!important;text-align:left!important;padding:10px 14px!important;}
+
+  /* Topbar logout button area */
+  div.st-key-topbar_row [data-testid="stHorizontalBlock"]{
+    align-items:center!important;
+  }
+  div.st-key-topbar_row [data-testid="stColumn"]:last-child,
+  div.st-key-topbar_row [data-testid="column"]:last-child{
+    min-width:80px!important;
+    max-width:80px!important;
+    flex:0 0 80px!important;
+  }
 }
 @media (prefers-reduced-motion: reduce){
   .ns-kc:hover,.ns-dis:hover,.ns-hcard:hover,.ns-mod:hover,div.stButton>button:hover{transform:none!important;}
@@ -1444,7 +1665,12 @@ Get a detailed result in minutes.
             st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
 
             with st.container(key="auth_card"):
-                t1, t2 = st.columns(2, gap="small")
+                st.markdown(
+                    '<div class="auth-tabs-start"></div>',
+                            unsafe_allow_html=True
+                        )
+                t1, t2 = st.columns([1, 1], gap="small")
+
                 with t1:
                     if st.button("Sign In", key="tl", use_container_width=True,
                                  type="primary" if active == "login" else "secondary"):
@@ -1457,7 +1683,7 @@ Get a detailed result in minutes.
                         st.rerun()
 
                 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-
+       
                 if active == "login":
                     _login()
                 else:
