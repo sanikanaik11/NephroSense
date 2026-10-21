@@ -4,6 +4,7 @@
 streamlit>=1.28
 pandas
 numpy
+bcrypt
 
 # ML / Assessment
 scikit-learn
