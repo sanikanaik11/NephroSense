@@ -50,7 +50,7 @@ GEMINI_MODELS = os.environ.get(
     "gemini-flash-lite-latest,gemma-4-26b-a4b-it"
 ).split(",")
 
-GROQ_MODEL   = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL   = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 OLLAMA_MODEL = os.environ.get("NEPHROSENSE_OLLAMA_MODEL", "llama3.2")
 OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
@@ -65,11 +65,6 @@ LANGUAGE — most important rule:
 - Patient wrote in English → reply only in simple English.
 - NEVER mix languages. NEVER use difficult bookish words.
 - If you must use a medical term like CKD or UTI, immediately explain it in one plain word.
-
-SCOPE — what you help with:
-- Kidney health topics: CKD, kidney stones, UTI, dialysis, transplant, lab values, diet.
-- General health symptoms: fever, headache, fatigue, swelling, nausea, back pain, cough, cold, stomach pain, body ache — answer these fully and helpfully.
-- Always answer the exact question asked. NEVER say "I can only help with kidney topics" — you help with all common health questions.
 
 ANSWER STYLE:
 - Greeting: on your FIRST reply in the conversation start with one short greeting — English: "Hello" or "Hey"; Hindi: "नमस्ते"; Marathi: "नमस्कार". NEVER start with "अरे", "अहो", "Aree", "Arre" or any similar interjection. Do NOT repeat a greeting if you already greeted in this conversation.
@@ -261,18 +256,6 @@ _KB_OFFLINE = [
      "If fever + back/flank pain: kidney infection — see doctor same day (antibiotics needed). "
      "Women: urinate after intercourse, front-to-back hygiene reduces recurrence. "
      "Source: NIH MedlinePlus — https://medlineplus.gov/urinarytractinfections.html"),
-    ("Fever",
-     ["fever", "temperature", "bukhar", "tap", "tapi", "thaandi", "taap",
-      "ताप", "बुखार", "थंडी", "ताप आला", "जास्त ताप"],
-     "Fever means body temperature above 38°C (100.4°F). It is usually the body fighting an infection. "
-     "Common causes: viral infection (cold, flu), bacterial infection (UTI, throat), dengue, malaria, typhoid. "
-     "Home care: rest, drink plenty of fluids (water, coconut water, dal water), light food. "
-     "Paracetamol (as on the packet) can lower fever — do not take ibuprofen/diclofenac if you have kidney problems. "
-     "See a doctor today if: fever above 103°F (39.4°C), fever lasting more than 3 days, "
-     "fever with severe headache and stiff neck (meningitis sign), fever with rash, "
-     "fever with pain while urinating (UTI/kidney infection), fits/seizure, confusion. "
-     "In kidney patients: any fever should be checked by a doctor — infections can worsen kidney function quickly. "
-     "Source: WHO — https://www.who.int/"),
     ("Back Pain / Flank Pain",
      ["back pain", "backache", "flank pain", "side pain", "lower back", "pith dukhi",
       "pathdukhna", "pathdukhi", "kamardard", "peeth dard"],
@@ -282,49 +265,6 @@ _KB_OFFLINE = [
      "See doctor if: pain with fever/chills (kidney infection), burning urine, blood in urine, "
      "pain shooting to groin (kidney stone), weakness in legs, pain lasting more than 2 weeks. "
      "Source: NIH MedlinePlus — https://medlineplus.gov/backpain.html"),
-    ("Fatigue and Weakness",
-     ["tired", "fatigue", "weakness", "thakaan", "thak", "drained", "no energy",
-      "थकान", "थकवा", "अशक्तपणा", "कमजोरी"],
-     "Feeling very tired or weak can have many causes: anaemia (low haemoglobin), poor sleep, "
-     "low blood pressure, diabetes, thyroid problems, kidney disease, or simply not eating enough. "
-     "Home care: rest well, eat iron-rich food (spinach, dal, eggs), drink enough water, avoid skipping meals. "
-     "In CKD patients: fatigue is common because kidneys make less EPO (a hormone that makes red blood cells). "
-     "See a doctor if: fatigue lasts more than 2 weeks, you feel breathless on small activity, "
-     "legs are swollen, urine output has decreased. "
-     "Source: NIH MedlinePlus — https://medlineplus.gov/fatigue.html"),
-    ("Swelling (Oedema)",
-     ["swelling", "swollen", "puffiness", "oedema", "edema", "suj", "sujan",
-      "सूज", "सुजन", "पाय सुजणे", "चेहरा सुजणे"],
-     "Swelling of face, hands, feet or ankles can mean: kidney problem (protein in urine), "
-     "heart problem, low protein in blood, or sitting/standing too long. "
-     "Kidney-related swelling: usually worse in the morning on the face/around eyes, "
-     "or in the feet/ankles at the end of the day. "
-     "Home care: raise feet when sitting, reduce salt in food, avoid standing for long periods. "
-     "See a doctor urgently if: sudden severe swelling, swelling with breathlessness, "
-     "swelling with very little urine output, whole body swelling. "
-     "Source: NKF — https://www.kidney.org/"),
-    ("Headache",
-     ["headache", "head pain", "dokedukhi", "sir dard", "डोकेदुखी", "सिरदर्द"],
-     "Headaches are very common and usually not serious. Common causes: dehydration, lack of sleep, "
-     "stress, high blood pressure, sinus, eye strain, or skipping meals. "
-     "Home care: drink a glass of water, rest in a dark quiet room, apply cold or warm cloth on forehead. "
-     "In kidney patients: headaches can be caused by high blood pressure or anaemia — check BP if available. "
-     "See a doctor urgently if: sudden worst headache of your life (thunderclap headache), "
-     "headache with fever and stiff neck, headache with confusion or vision changes, "
-     "headache after a head injury. "
-     "Source: NIH MedlinePlus — https://medlineplus.gov/headache.html"),
-    ("Nausea and Vomiting",
-     ["nausea", "vomit", "vomiting", "ulti", "matli", "मळमळ", "उलटी", "मतली"],
-     "Nausea and vomiting can be caused by stomach infection, food poisoning, dehydration, "
-     "kidney disease, medicines, or motion sickness. "
-     "Home care: sip small amounts of water or ORS (oral rehydration solution) frequently, "
-     "eat light food like rice, toast, banana once nausea settles, avoid oily or spicy food. "
-     "In CKD patients: nausea is a sign that waste products (urea) are building up in the blood — "
-     "report to your doctor. "
-     "See a doctor urgently if: vomiting blood or material that looks like coffee grounds, "
-     "cannot keep any fluids down for more than 6 hours, vomiting with severe stomach pain, "
-     "signs of dehydration (very dry mouth, no urine, dizziness). "
-     "Source: NIH MedlinePlus — https://medlineplus.gov/nauseaandvomiting.html"),
     ("Kidney Health — Diet and Lifestyle",
      ["diet", "food", "healthy kidney", "kidney health", "water intake", "salt", "potassium",
       "aahar", "jevan", "pani", "khana"],
@@ -352,19 +292,11 @@ def _offline_answer(text: str, lang: str = "english") -> str:
     refs = _kb_offline_retrieve(text)
     if not refs:
         if lang == "marathi":
-            return (
-                "मला तुमचा प्रश्न पूर्णपणे समजला नाही किंवा माझ्याकडे आत्ता इंटरनेट नाही. "
-                "कृपया अधिक तपशील सांगा — जसे की लक्षण कुठे आहे, किती दिवसांपासून आहे."
-            )
+            return "मला किडनी आरोग्य, किडनी स्टोन, UTI, डायलिसिस यावर मदत करता येते. कृपया अधिक तपशील सांगा."
         if lang == "hindi":
-            return (
-                "मुझे आपका सवाल पूरी तरह समझ नहीं आया या अभी इंटरनेट नहीं है. "
-                "कृपया थोड़ा और बताएं — जैसे लक्षण कहाँ है, कितने दिनों से है."
-            )
-        return (
-            "I couldn't find specific information for your question right now. "
-            "Could you give me more details — like where the symptom is, how long it has been there?"
-        )
+            return "मैं किडनी स्वास्थ्य, किडनी स्टोन, UTI, डायलिसिस पर मदद कर सकता हूं। कृपया अधिक जानकारी दें।"
+        return ("I can help with kidney health, kidney stones, UTI, dialysis, diet, and blood tests. "
+                "Could you give me more details?")
     parts = [f"**{n}**\n\n{b}" for n, b in refs[:2]]
     return "\n\n---\n\n".join(parts) + "\n\n_General information — confirm with your doctor._"
 

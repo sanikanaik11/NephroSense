@@ -1,0 +1,6 @@
+﻿source,user_id,full_name,email,gender,age,role,phone,dob,blood_group,city,diabetes,hypertension,heart_disease,kidney_history,uti_history,smoking,water_intake,extra_data,registered_at,last_login
+nephrosense,1,sanika,sanikanaik1129@gmail.com,Female,45,patient,9270534125,15/08/1981,Don't know,thane,1,1,0,0,0,Former smoker,Less than 1 litre,,2026-08-02 12:04:41,"21 Oct 2026, 04:23 AM"
+nephrosense,2,pinki das,sanikanaaik@gmail.com,Female,21,patient,9270534125,07/07/2005,Don't know,boisar,0,0,0,1,1,Non-smoker,1-2 litres,,2026-08-19 18:02:01,
+nephrosense,3,neha,saanikaanaaik@gmail.com,Female,21,patient,9270534125,07/07/2005,A-,lonavala,0,0,0,1,1,Former smoker,Less than 1 litre,,2026-09-25 22:27:37,"30 Sep 2026, 11:31 AM"
+nephrosense,4,sanika Naik,sanikanaik11@gmail.com,Female,22,patient,9270534125,15/08/2004,A-,wada,0,0,0,1,0,Non-smoker,Less than 1 litre,,2026-10-02 13:34:08,"22 Oct 2026, 11:34 PM"
+nephrosense,5,Sharad Naik,sharadnaik2199@gmail.com,Male,53,patient,9270534125,01/06/1973,Don't know,vasai,0,1,0,0,0,Non-smoker,More than 3 litres,,2026-10-20 16:39:43,"21 Oct 2026, 10:40 AM"

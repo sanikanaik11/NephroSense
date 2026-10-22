@@ -21,5 +21,3 @@ pypdf
 # HTTP (used by chatbot API calls — usually already installed)
 requests
 python-dotenv
-psycopg2-binary
-openpyxl
