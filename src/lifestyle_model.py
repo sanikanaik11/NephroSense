@@ -68,66 +68,73 @@ FEAT_LABELS.update({
 # Gender/age-gated sections never shown to minors.
 # ──────────────────────────────────────────────────────────────
 CLINICAL_QUESTIONS = [
-    # Free-text / voice — patient's own description, any language.
-    # NOT scored by the model — saved as-is (and, if given by voice,
-    # transcribed by Whisper) purely as documentation for the doctor.
+    # Free-text / voice — patient's own description, any language (documentation only).
     {"key": "own_description", "label": "In your own words, describe what you're experiencing (you can type in any language)",
      "type": "text", "placeholder": "e.g. I've been feeling very tired and my ankles are swollen for the past week...",
      "external": True},
 
-    # Universal
-    {"key": "burning_urine", "label": "Burning or itching sensation while urinating?", "type": "yesno", "default": "no"},
-    {"key": "urine_frequency", "label": "Any change in how often you urinate?", "type": "select",
-     "options": ["no change", "More frequent than usual", "Less frequent than usual"], "default": "no change"},
-    {"key": "flank_pain", "label": "Persistent pain in your stomach, sides, or lower back?", "type": "yesno", "default": "no"},
-    {"key": "nausea", "label": "Nausea or vomiting recently?", "type": "yesno", "default": "no"},
-    {"key": "symptom_duration", "label": "If you have any symptoms above, how long have you noticed them?", "type": "select",
-     "options": ["none", "Less than 1 week", "1-4 weeks", "1-3 months", "More than 3 months"], "default": "none"},
-    {"key": "current_meds", "label": "Medicines you are currently taking (if any)", "type": "text", "placeholder": "e.g. Metformin, Amlodipine"},
+    # ── 1. Known conditions & treatment (no test needed — you just know these) ──
+    {"key": "long_term_htn", "label": "If you have high blood pressure, for how many years?", "type": "select",
+     "options": ["not hypertensive", "Less than 5 years", "5-10 years", "More than 10 years"], "default": "not hypertensive"},
+    {"key": "bp_medicine", "label": "Do you take medicine for blood pressure?", "type": "select",
+     "options": ["not applicable", "Yes, every day", "Yes, but I often miss doses", "No (stopped or never took)"],
+     "default": "not applicable"},
+    {"key": "bp_control", "label": "When your blood pressure is checked (home, pharmacy or clinic), it is usually…", "type": "select",
+     "options": ["don't know", "Normal (below 130/80)", "Sometimes high", "Often high (140/90 or more)"],
+     "default": "don't know"},
+    {"key": "long_term_diabetes", "label": "If diabetic, how many years have you had it?", "type": "select",
+     "options": ["not diabetic", "Less than 5 years", "5-10 years", "More than 10 years"], "default": "not diabetic"},
+    {"key": "dm_control", "label": "If diabetic, is your sugar usually under control?", "type": "select",
+     "options": ["not diabetic", "Mostly controlled", "Often high / not sure"], "default": "not diabetic"},
+    {"key": "autoimmune_disease", "label": "Do you have any autoimmune condition (Lupus, RA, etc.)?", "type": "yesno", "default": "no"},
+    {"key": "family_ckd", "label": "Does anyone in your immediate family (parent/sibling) have kidney disease or is on dialysis?", "type": "yesno", "default": "no"},
+    {"key": "recurrent_kidney_stones", "label": "Have you had kidney stones more than once?", "type": "yesno", "default": "no"},
+    {"key": "recurrent_uti_general", "label": "Have you had 3+ urine infections (UTIs) in the past year?", "type": "yesno", "default": "no"},
+    {"key": "contrast_dye_exposure", "label": "Have you had a CT scan with contrast dye or an angiogram in the last year?", "type": "yesno", "default": "no"},
     {"key": "nsaid_use", "label": "How often do you take painkillers (e.g. Ibuprofen, Diclofenac)?", "type": "select",
      "options": ["never", "Occasionally", "Weekly", "Daily"], "default": "never"},
+    {"key": "herbal_meds", "label": "Do you regularly take Ayurvedic, herbal or other unregistered medicines?", "type": "yesno", "default": "no"},
+    {"key": "current_meds", "label": "Medicines you are currently taking (if any)", "type": "text", "placeholder": "e.g. Metformin, Amlodipine"},
     {"key": "allergies", "label": "Any known drug allergies?", "type": "text", "placeholder": "Optional"},
-    {"key": "dipstick_ph", "label": "Urine pH, if you did a home dipstick test", "type": "number", "unit": "pH", "default": 6.0, "min": 4.5, "max": 8.5, "step": 0.5},
-    {"key": "foamy_urine", "label": "Is your urine foamy or frothy?", "type": "select", "options": ["no", "yes", "sometimes"], "default": "no"},
-    {"key": "nocturia", "label": "Do you wake up at night frequently to urinate?", "type": "yesno", "default": "no"},
+
+    # ── 2. Body & lifestyle ──
+    {"key": "bmi_category", "label": "Your BMI category (if known)", "type": "select",
+     "options": ["unknown", "Underweight (<18.5)", "Normal (18.5-24.9)", "Overweight (25-29.9)", "Obese (30+)"], "default": "unknown"},
+    {"key": "smoking", "label": "Do you smoke or chew tobacco?", "type": "select",
+     "options": ["no", "yes", "former"], "default": "no", "min_age": 18},
+    {"key": "alcohol", "label": "How often do you drink alcohol?", "type": "select",
+     "options": ["never", "occasionally", "regularly"], "default": "never", "min_age": 18},
+    {"key": "occupational", "label": "Do you work with chemicals, pesticides, or heavy metals?", "type": "yesno", "default": "no", "min_age": 18},
+
+    # ── 3. Symptoms you can notice yourself ──
     {"key": "fatigue", "label": "Unusual fatigue or weakness?", "type": "yesno", "default": "no"},
     {"key": "appetite_change", "label": "Any recent unexplained weight loss or appetite change?", "type": "yesno", "default": "no"},
+    {"key": "nausea", "label": "Nausea or vomiting recently?", "type": "yesno", "default": "no"},
+    {"key": "puffy_eyes", "label": "Puffy face or eyes, especially in the morning?", "type": "yesno", "default": "no"},
+    {"key": "itchy_skin", "label": "Persistent itching of the skin without a rash?", "type": "yesno", "default": "no"},
+    {"key": "foamy_urine", "label": "Is your urine foamy or frothy?", "type": "select", "options": ["no", "yes", "sometimes"], "default": "no"},
+    {"key": "urine_frequency", "label": "Any change in how often you urinate?", "type": "select",
+     "options": ["no change", "More frequent than usual", "Less frequent than usual"], "default": "no change"},
+    {"key": "nocturia", "label": "Do you wake up at night frequently to urinate?", "type": "yesno", "default": "no"},
+    {"key": "burning_urine", "label": "Burning or itching sensation while urinating?", "type": "yesno", "default": "no"},
+    {"key": "flank_pain", "label": "Persistent pain in your stomach, sides, or lower back?", "type": "yesno", "default": "no"},
+    {"key": "symptom_duration", "label": "If you have any symptoms above, how long have you noticed them?", "type": "select",
+     "options": ["none", "Less than 1 week", "1-4 weeks", "1-3 months", "More than 3 months"], "default": "none"},
+
+    # ── 4. Gender / age specific ──
+    # Women 18+
+    {"key": "preg_history", "label": "Have you had pregnancy complications (pre-eclampsia / high BP in pregnancy)?",
+     "type": "yesno", "default": "no", "female_only": True, "min_age": 18},
+    # Men 45+
+    {"key": "prostate", "label": "Difficulty urinating (weak stream, straining, incomplete emptying)?",
+     "type": "yesno", "default": "no", "male_only": True, "min_age": 45},
+
+    # ── 5. Urine-test results — shown ONLY if the person ticked "I have a urine test / dipstick result" ──
+    {"key": "dipstick_ph", "label": "Urine pH, if you did a home dipstick test", "type": "number", "unit": "pH", "default": 6.0, "min": 4.5, "max": 8.5, "step": 0.5},
     {"key": "rbc_urine", "label": "Red blood cells in urine test (if you have a report)", "type": "select", "options": ["normal", "abnormal"], "default": "normal"},
     {"key": "pc_urine", "label": "Pus cells in urine test", "type": "select", "options": ["normal", "abnormal"], "default": "normal"},
     {"key": "pcc_urine", "label": "Pus cell clumps in urine test", "type": "select", "options": ["notpresent", "present"], "default": "notpresent"},
     {"key": "ba_urine", "label": "Bacteria in urine test", "type": "select", "options": ["notpresent", "present"], "default": "notpresent"},
-
-    # ── Real CKD risk-factor questions (KDIGO / NICE CKD guideline factors) ──
-    {"key": "family_ckd", "label": "Does anyone in your immediate family (parent/sibling) have kidney disease or is on dialysis?", "type": "yesno", "default": "no"},
-    {"key": "bmi_category", "label": "Your BMI category (if known)", "type": "select",
-     "options": ["unknown", "Underweight (<18.5)", "Normal (18.5-24.9)", "Overweight (25-29.9)", "Obese (30+)"], "default": "unknown"},
-    {"key": "recurrent_kidney_stones", "label": "Have you had kidney stones more than once?", "type": "yesno", "default": "no"},
-    {"key": "long_term_diabetes", "label": "If diabetic, how many years have you had it?", "type": "select",
-     "options": ["not diabetic", "Less than 5 years", "5-10 years", "More than 10 years"], "default": "not diabetic"},
-    {"key": "long_term_htn", "label": "If hypertensive, how many years have you had it?", "type": "select",
-     "options": ["not hypertensive", "Less than 5 years", "5-10 years", "More than 10 years"], "default": "not hypertensive"},
-    {"key": "autoimmune_disease", "label": "Do you have any autoimmune condition (Lupus, RA, etc.)?", "type": "yesno", "default": "no"},
-    {"key": "recurrent_uti_general", "label": "Have you had 3+ UTIs in the past year?", "type": "yesno", "default": "no"},
-    {"key": "contrast_dye_exposure", "label": "Have you had a CT scan with contrast dye or an angiogram in the last year?", "type": "yesno", "default": "no"},
-
-    # Women only, 18+
-    {"key": "preg_history", "label": "Have you had any pregnancy complications (pre-eclampsia / gestational hypertension)?",
-     "type": "yesno", "default": "no", "female_only": True, "min_age": 18},
-    {"key": "uti_recurrent", "label": "Do you have frequent urinary tract infections (UTIs)?",
-     "type": "yesno", "default": "no", "female_only": True, "min_age": 18},
-    {"key": "gynaec", "label": "Any known gynaecological conditions (PCOS, fibroids, uterine problems)?",
-     "type": "yesno", "default": "no", "female_only": True, "min_age": 18},
-    {"key": "menstrual", "label": "Any significant change in your menstrual cycle recently?",
-     "type": "yesno", "default": "no", "female_only": True, "min_age": 18},
-    # Men only, 18+
-    {"key": "alcohol", "label": "How often do you drink alcohol?", "type": "select",
-     "options": ["never", "occasionally", "regularly"], "default": "never", "male_only": True, "min_age": 18},
-    {"key": "smoking", "label": "Do you smoke or use tobacco?", "type": "select",
-     "options": ["no", "yes", "former"], "default": "no", "male_only": True, "min_age": 18},
-    {"key": "prostate", "label": "Any difficulty urinating / prostate issues?",
-     "type": "yesno", "default": "no", "male_only": True, "min_age": 18},
-    {"key": "occupational", "label": "Do you work with chemicals, pesticides, or heavy metals?",
-     "type": "yesno", "default": "no", "male_only": True, "min_age": 18},
 ]
 
 

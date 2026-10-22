@@ -25,7 +25,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from database import (
     register_user, login_user, get_user_history, save_assessment,
     get_latest_component_scores, get_latest_clinical_notes, get_latest_egfr,
-    get_latest_lifestyle_answers,
+    get_latest_lifestyle_answers, age_from_dob,
 )
 from lifestyle_model import (
     QUESTIONS, FEAT_LABELS, CLINICAL_QUESTIONS, visible_clinical_questions, predict_lifestyle_risk,
@@ -1127,230 +1127,9 @@ div[data-testid="stTextInput"] [data-baseweb="input"] > div{background:#fff!impo
 div[data-testid="stTextInput"] [data-baseweb="input"] button{background:transparent!important;}
 div[data-testid="stTextInput"] [data-baseweb="input"] svg{fill:#64748B!important;color:#64748B!important;}
 
-/* ═══════════════════════════════════════════════════
-   RESPONSIVE — TABLET (≤900px)
-   ═══════════════════════════════════════════════════ */
-@media (max-width:900px){
+@media (max-width:800px){
   div.st-key-home_wrap{padding:20px 16px 28px!important;}
   div.st-key-home_wrap h2{font-size:32px!important;}
-}
-
-/* ═══════════════════════════════════════════════════
-   RESPONSIVE — MOBILE (≤640px)
-   Covers both the login/register home page AND the
-   logged-in shell (nav + content columns).
-   ═══════════════════════════════════════════════════ */
-@media (max-width:640px){
-
-  /* ── 0. Global overflow guard ── */
-  html, body,
-  .stApp,
-  [data-testid="stAppViewContainer"],
-  [data-testid="stMainBlockContainer"],
-  [data-testid="stVerticalBlock"]{
-    overflow-x:hidden!important;
-    max-width:100vw!important;
-  }
-
-  /* ── 1. Topbar ── */
-  .ns-bar{padding:0 12px!important;height:52px!important;}
-  .ns-brand-nm{font-size:15px!important;}
-
-  /* ── 2. HOME PAGE — hero + auth card ──────────────────────
-     The outer home_wrap container */
-  div.st-key-home_wrap{
-    padding:12px 10px 20px!important;
-    overflow-x:hidden!important;
-  }
-
-  /* Stack the left-hero and right-auth columns vertically.
-     Streamlit sets width AND flex via INLINE styles on the column div.
-     We must use !important on every axis to override them. */
-  div.st-key-home_wrap [data-testid="stHorizontalBlock"]{
-    flex-direction:column!important;
-    flex-wrap:wrap!important;
-    gap:0!important;
-    align-items:stretch!important;
-    width:100%!important;
-    max-width:100%!important;
-  }
-  /* target both the outer column wrapper and its immediate first child
-     (Streamlit wraps column content in an extra div) */
-  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
-    > [data-testid="stColumn"],
-  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
-    > [data-testid="column"],
-  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
-    > [data-testid="stColumn"] > div,
-  div.st-key-home_wrap [data-testid="stHorizontalBlock"]
-    > [data-testid="column"] > div{
-    flex:1 1 100%!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:100%!important;
-    box-sizing:border-box!important;
-  }
-
-  /* Hero text */
-  div.st-key-home_wrap h2{
-    font-size:26px!important;
-    line-height:1.2!important;
-    letter-spacing:-.5px!important;
-  }
-  div.st-key-home_wrap p{font-size:14px!important;line-height:1.55!important;}
-
-  /* Hide the 3-column metric stats row on mobile */
-  div.st-key-home_wrap [data-testid="stMetric"]{display:none!important;}
-  /* Also hide the stHorizontalBlock that ONLY contains metrics
-     (the stats row — 3rd stHorizontalBlock inside the left col) */
-  div.st-key-home_wrap [data-testid="stColumn"]:first-child
-    [data-testid="stHorizontalBlock"]:last-child,
-  div.st-key-home_wrap [data-testid="column"]:first-child
-    [data-testid="stHorizontalBlock"]:last-child{
-    display:none!important;
-  }
-
-  /* ── 3. AUTH CARD (login / register form) ── */
-  div.st-key-auth_card{
-    padding:16px 12px 14px!important;
-    border-radius:14px!important;
-    width:100%!important;
-    box-sizing:border-box!important;
-    margin-top:8px!important;
-  }
-
-  /* Sign In / Register toggle buttons row — keep side by side, fit screen */
-  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child,
-  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child{
-    flex-direction:row!important;
-    gap:8px!important;
-    flex-wrap:nowrap!important;
-    width:100%!important;
-  }
-  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child
-    > [data-testid="stColumn"],
-  div.st-key-auth_card > div > [data-testid="stHorizontalBlock"]:first-child
-    > [data-testid="column"]{
-    flex:1 1 0!important;
-    min-width:0!important;
-    max-width:50%!important;
-  }
-
-  /* All buttons inside auth card */
-  div.st-key-auth_card div.stButton > button{
-    width:100%!important;
-    min-width:0!important;
-    font-size:13px!important;
-    padding:10px 4px!important;
-    white-space:nowrap!important;
-    overflow:hidden!important;
-    text-overflow:ellipsis!important;
-  }
-
-  /* Form inputs and selects */
-  div.st-key-auth_card [data-testid="stTextInput"],
-  div.st-key-auth_card [data-testid="stTextInput"] input,
-  div.st-key-auth_card [data-testid="stSelectbox"],
-  div.st-key-auth_card [data-baseweb="input"]{
-    width:100%!important;
-    max-width:100%!important;
-    box-sizing:border-box!important;
-  }
-
-  /* Submit buttons (Sign in →, Continue →, Create account →) */
-  div.st-key-auth_card [data-testid="stFormSubmitButton"] button{
-    width:100%!important;
-    min-width:0!important;
-    font-size:14px!important;
-  }
-
-  /* Reg step-2: back + continue cols → stack vertically */
-  div.st-key-auth_card [data-testid="stHorizontalBlock"]:not(:first-child){
-    flex-wrap:wrap!important;
-  }
-  div.st-key-auth_card [data-testid="stHorizontalBlock"]:not(:first-child)
-    > [data-testid="stColumn"],
-  div.st-key-auth_card [data-testid="stHorizontalBlock"]:not(:first-child)
-    > [data-testid="column"]{
-    flex:1 1 100%!important;
-    min-width:0!important;
-    max-width:100%!important;
-  }
-
-  /* ── 4. LOGGED-IN SHELL — nav + content ──────────────────
-     st.columns([1, 4.2]) creates a narrow nav + wide content.
-     On mobile we stack them: nav on top, content below.
-     Must override Streamlit's inline width/flex styles. */
-  div.st-key-shell > div > [data-testid="stHorizontalBlock"]{
-    flex-direction:column!important;
-    flex-wrap:wrap!important;
-    gap:0!important;
-    width:100%!important;
-    max-width:100%!important;
-  }
-  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
-    > [data-testid="stColumn"],
-  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
-    > [data-testid="column"],
-  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
-    > [data-testid="stColumn"] > div,
-  div.st-key-shell > div > [data-testid="stHorizontalBlock"]
-    > [data-testid="column"] > div{
-    flex:1 1 100%!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:100%!important;
-    box-sizing:border-box!important;
-  }
-
-  /* Nav panel: compact, full width */
-  div.st-key-navpanel{
-    padding:8px 10px 12px!important;
-    width:100%!important;
-  }
-  div.st-key-navpanel div.stButton > button{
-    font-size:14px!important;
-    padding:10px 14px!important;
-  }
-
-  /* Content/dashboard wrap */
-  div.st-key-dash_wrap,
-  div.st-key-content_wrap,
-  div.st-key-lifestyle_wrap{
-    padding:8px 10px 20px!important;
-    width:100%!important;
-  }
-
-  /* ns-sb-card inside navpanel — show as horizontal strip */
-  .ns-sb-card{
-    border-radius:12px!important;
-    padding:12px!important;
-    margin-bottom:8px!important;
-  }
-  .ns-sb-grid{
-    grid-template-columns:repeat(4,1fr)!important;
-    gap:6px!important;
-  }
-
-  /* Welcome banner in dashboard — stack instead of space-between */
-  .ns-welc{
-    flex-direction:column!important;
-    align-items:flex-start!important;
-    gap:10px!important;
-    padding:16px 14px!important;
-  }
-  .nw-box{align-self:stretch!important;text-align:left!important;padding:10px 14px!important;}
-
-  /* Topbar logout button area */
-  div.st-key-topbar_row [data-testid="stHorizontalBlock"]{
-    align-items:center!important;
-  }
-  div.st-key-topbar_row [data-testid="stColumn"]:last-child,
-  div.st-key-topbar_row [data-testid="column"]:last-child{
-    min-width:80px!important;
-    max-width:80px!important;
-    flex:0 0 80px!important;
-  }
 }
 @media (prefers-reduced-motion: reduce){
   .ns-kc:hover,.ns-dis:hover,.ns-hcard:hover,.ns-mod:hover,div.stButton>button:hover{transform:none!important;}
@@ -1503,6 +1282,29 @@ def _status_of(h):
         return None, "Timing not listed here — check on Google or call to confirm"
 
 
+_GENERIC_NAME_WORDS = {
+    "hospital", "hospitals", "medical", "foundation", "trust", "clinic", "centre", "center", "charitable",
+    "health", "healthcare", "care", "general", "research", "institute", "nursing", "home", "multispeciality",
+    "multispecialty", "super", "speciality", "specialty", "memorial", "private", "limited", "mumbai",
+    "pune", "delhi", "city", "district", "civil", "government", "and", "the", "of"}
+
+
+def _site_matches_hospital(name, url):
+    """OpenStreetMap website tags are crowd-sourced and sometimes wrong. Trust a website only if its DOMAIN
+    contains a distinctive word of the hospital name (or the name's initials). Path text is ignored."""
+    import urllib.parse as _up
+    try:
+        u = url if str(url).startswith("http") else "https://" + str(url)
+        host = (_up.urlparse(u).hostname or "").lower().replace("www.", "")
+    except Exception:
+        return False
+    host_flat = re.sub(r"[^a-z0-9]", "", host.split(".")[0] if host else "")
+    words = [w for w in re.findall(r"[a-z]+", str(name).lower())]
+    tokens = [w for w in words if len(w) >= 4 and w not in _GENERIC_NAME_WORDS]
+    initials = "".join(w[0] for w in words if w not in ("and", "the", "of"))
+    return bool(host_flat) and (any(t in host_flat for t in tokens) or (len(initials) >= 3 and initials in host_flat))
+
+
 def _hospital_card_html(i, h, city):
     esc = lambda v: html.escape(str(v or ""))
     state, status_text = _status_of(h)
@@ -1518,11 +1320,14 @@ def _hospital_card_html(i, h, city):
     links = f'<a class="ns-hl m" href="{esc(murl)}" target="_blank">📍 Directions</a>'
     if tel:
         links += f'<a class="ns-hl c" href="tel:{tel}">📞 Call to book appointment</a>'
-    if h.get("website"):
+    import urllib.parse as _up
+    if h.get("website") and _site_matches_hospital(h.get("name", ""), h["website"]):
         w = str(h["website"])
         w = w if w.startswith("http") else "https://" + w
-        links += f'<a class="ns-hl b" href="{esc(w)}" target="_blank">🌐 Website / book online</a>'
-    import urllib.parse as _up
+        links += f'<a class="ns-hl b" href="{esc(w)}" target="_blank">🌐 Hospital website</a>'
+    # always-safe booking link: a Google search for this hospital's own appointment page
+    _bq = _up.quote_plus(f"{h.get('name', '')} {city} book appointment")
+    links += f'<a class="ns-hl b" href="https://www.google.com/search?q={_bq}" target="_blank">🗓️ Find booking page</a>'
     _gq = _up.quote_plus(f"{h.get('name', '')} {h.get('address', '') or city}")
     links += (f'<a class="ns-hl b" href="https://www.google.com/maps/search/?api=1&query={_gq}" '
               f'target="_blank">🕒 Timings on Google</a>')
@@ -1665,12 +1470,7 @@ Get a detailed result in minutes.
             st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
 
             with st.container(key="auth_card"):
-                st.markdown(
-                    '<div class="auth-tabs-start"></div>',
-                            unsafe_allow_html=True
-                        )
-                t1, t2 = st.columns([1, 1], gap="small")
-
+                t1, t2 = st.columns(2, gap="small")
                 with t1:
                     if st.button("Sign In", key="tl", use_container_width=True,
                                  type="primary" if active == "login" else "secondary"):
@@ -1683,7 +1483,7 @@ Get a detailed result in minutes.
                         st.rerun()
 
                 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-       
+
                 if active == "login":
                     _login()
                 else:
@@ -1807,10 +1607,13 @@ def _reg1():
             for e in errs:
                 st.error(e)
         else:
-            try:
-                age = datetime.now().year - int(dob.strip().split("/")[-1])
-            except Exception:
-                age = 0
+            age = age_from_dob(dob)
+            if age is None:
+                st.error("Enter your date of birth as DD/MM/YYYY (for example 14/03/1972).")
+                return
+            if age < 18:
+                st.error("NephroSense is for adults (18 years or older).")
+                return
 
             st.session_state["_r"] = dict(
                 name=name.strip(), email=email.strip(), phone=phone.strip(), gender=gender,
@@ -1949,6 +1752,210 @@ def page_dashboard():
                 if st.button("🏥 View all nearby hospitals →", use_container_width=True, key="dash_hosp_btn"):
                     go("find_hospital")
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+        # ── Personalised Kidney Risk Trend (interactive line chart) ─────────────
+        if len(scored) >= 1:
+            import plotly.graph_objects as go_plt
+            from datetime import timedelta
+
+            # ── parse all scored records into (datetime, score, level) ──────────
+            _trend_pts = []
+            for r in scored:
+                _raw = str(r.get("created_at") or "")
+                _dt = None
+                for _fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+                    try:
+                        _dt = datetime.strptime(_raw[:26], _fmt)
+                        break
+                    except ValueError:
+                        continue
+                if _dt is None:
+                    try:
+                        _dt = datetime.fromisoformat(_raw)
+                    except Exception:
+                        continue
+                _trend_pts.append((_dt, float(r["risk_score"]), str(r.get("risk_level") or "").upper()))
+            # oldest → newest
+            _trend_pts.sort(key=lambda x: x[0])
+
+            # ── time-range filter ────────────────────────────────────────────────
+            st.markdown('<div class="ns-lbl">📈 Personalised Kidney Risk Trend</div>',
+                        unsafe_allow_html=True)
+
+            _filter_labels = ["30 days", "3 months", "6 months", "All history"]
+            _filter_key = "risk_trend_filter"
+            if _filter_key not in st.session_state:
+                st.session_state[_filter_key] = "All history"
+
+            _fcols = st.columns(len(_filter_labels))
+            for _fi, _fl in enumerate(_filter_labels):
+                _is_active = st.session_state[_filter_key] == _fl
+                with _fcols[_fi]:
+                    if st.button(
+                        _fl,
+                        key=f"rtf_{_fi}",
+                        type="primary" if _is_active else "secondary",
+                        use_container_width=True,
+                    ):
+                        st.session_state[_filter_key] = _fl
+                        st.rerun()
+
+            _now = datetime.now()
+            _cutoff_map = {
+                "30 days":    _now - timedelta(days=30),
+                "3 months":   _now - timedelta(days=91),
+                "6 months":   _now - timedelta(days=183),
+                "All history": datetime(2000, 1, 1),
+            }
+            _cutoff = _cutoff_map.get(st.session_state[_filter_key], datetime(2000, 1, 1))
+            _visible = [p for p in _trend_pts if p[0] >= _cutoff]
+
+            if not _visible:
+                st.info(f"No check-ups in the last {st.session_state[_filter_key]}. "
+                        "Try a wider time range above.")
+            else:
+                # x-axis: formatted string labels so Plotly treats them categorically
+                # (avoids auto-generated duplicate tick marks on a time axis)
+                _x_labels   = [p[0].strftime("%d %b %Y") for p in _visible]
+                _scores_plot = [p[1] for p in _visible]
+                _levels_plot = [p[2] for p in _visible]
+
+                # solid, saturated colours per point
+                _pt_color_map = {
+                    "HIGH":   "#C41E1E",   # strong red
+                    "MEDIUM": "#C27A00",   # strong amber
+                    "LOW":    "#1A7A3C",   # strong green
+                }
+                _pt_colors = [_pt_color_map.get(lvl, "#1D4ED8") for lvl in _levels_plot]
+                _level_names = {"HIGH": "High Risk", "MEDIUM": "Medium Risk", "LOW": "Low Risk"}
+
+                # per-point hover text (plain text — no HTML tags, more reliable)
+                _hover_texts = [
+                    f"Date: {lbl}\nRisk Score: {s:.0f}%\nLevel: {_level_names.get(lvl, lvl.title() if lvl else '—')}\n(Screening estimate — not a diagnosis)"
+                    for lbl, s, lvl in zip(_x_labels, _scores_plot, _levels_plot)
+                ]
+
+                _fig = go_plt.Figure()
+
+                # ── background zone bands (rgba so opacity is baked in — no wash-out) ──
+                _fig.add_hrect(y0=75, y1=100, fillcolor="rgba(220, 38, 38, 0.12)",
+                               line_width=0, layer="below")
+                _fig.add_hrect(y0=50, y1=75,  fillcolor="rgba(202, 138, 4, 0.12)",
+                               line_width=0, layer="below")
+                _fig.add_hrect(y0=0,  y1=50,  fillcolor="rgba(22, 163, 74, 0.10)",
+                               line_width=0, layer="below")
+
+                # dashed threshold lines at 50 and 75
+                for _thresh, _tcol in ((50, "rgba(202,138,4,0.55)"), (75, "rgba(220,38,38,0.55)")):
+                    _fig.add_hline(
+                        y=_thresh,
+                        line=dict(color=_tcol, width=1, dash="dot"),
+                        layer="below",
+                    )
+
+                # ── zone labels pinned to right margin ───────────────────────────
+                for _zy, _ztxt, _zcol in (
+                    (87.5, "● High",   "#C41E1E"),
+                    (62.5, "● Medium", "#C27A00"),
+                    (25.0, "● Low",    "#1A7A3C"),
+                ):
+                    _fig.add_annotation(
+                        x=1.01, y=_zy, xref="paper", yref="y",
+                        text=f"<b>{_ztxt}</b>",
+                        showarrow=False,
+                        font=dict(size=10, color=_zcol, family="Inter, sans-serif"),
+                        xanchor="left",
+                    )
+
+                # ── line (blue) ──────────────────────────────────────────────────
+                if len(_visible) > 1:
+                    _fig.add_trace(go_plt.Scatter(
+                        x=_x_labels,
+                        y=_scores_plot,
+                        mode="lines",
+                        line=dict(color="#1D4ED8", width=2.5),
+                        hoverinfo="skip",
+                        showlegend=False,
+                        name="",
+                    ))
+
+                # ── coloured markers on top ──────────────────────────────────────
+                _fig.add_trace(go_plt.Scatter(
+                    x=_x_labels,
+                    y=_scores_plot,
+                    mode="markers",
+                    marker=dict(
+                        size=12,
+                        color=_pt_colors,
+                        line=dict(color="#FFFFFF", width=2),
+                        symbol="circle",
+                    ),
+                    text=_hover_texts,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                    name="",
+                ))
+
+                _fig.update_layout(
+                    title=dict(
+                        text=f"<b>Kidney Risk History</b>  <span style='font-size:12px;color:#64748B'>· {u['full_name']}</span>",
+                        font=dict(size=15, color="#0F172A", family="Inter, sans-serif"),
+                        x=0, xanchor="left",
+                    ),
+                    xaxis=dict(
+                        type="category",          # categorical → one tick per point, labelled correctly
+                        tickfont=dict(size=11, color="#374151", family="Inter, sans-serif"),
+                        showgrid=False,
+                        zeroline=False,
+                        showline=True,
+                        linecolor="#D1D5DB",
+                        tickangle=-30,
+                        title=None,
+                    ),
+                    yaxis=dict(
+                        title="Risk Score (%)",
+                        range=[0, 105],
+                        ticksuffix="%",
+                        tickvals=[0, 25, 50, 75, 100],
+                        tickfont=dict(size=11, color="#374151", family="Inter, sans-serif"),
+                        showgrid=True,
+                        gridcolor="#E5E7EB",
+                        gridwidth=1,
+                        zeroline=False,
+                        showline=True,
+                        linecolor="#D1D5DB",
+                    ),
+                    plot_bgcolor="#FFFFFF",
+                    paper_bgcolor="#FFFFFF",
+                    margin=dict(t=52, b=30, l=0, r=60),
+                    height=340,
+                    font=dict(family="Inter, sans-serif", color="#0F172A"),
+                    showlegend=False,
+                    hovermode="closest",
+                    hoverlabel=dict(
+                        bgcolor="#1E293B",
+                        bordercolor="#334155",
+                        font=dict(color="#F8FAFC", size=12, family="Inter, sans-serif"),
+                        align="left",
+                    ),
+                )
+
+                st.plotly_chart(
+                    _fig, use_container_width=True,
+                    config={"displayModeBar": False, "responsive": True},
+                )
+
+                if len(_visible) == 1:
+                    st.caption(
+                        "📌 One check-up recorded. Complete another Health Assessment "
+                        "after your next lab test to start tracking your trend over time."
+                    )
+
+                st.caption(
+                    "Screening estimates only — not a clinical diagnosis or confirmed change "
+                    "in kidney function. Each point represents one completed Health Assessment."
+                )
+        # ────────────────────────────────────────────────────────────────────────
 
         def _mini_card(icon, label, text, cls=""):
             return (
@@ -2617,8 +2624,9 @@ else{mic.addEventListener('click',function(){
 
         # Ticking these (outside the form, so the page updates at once) decides which questions appear:
         # questions about test results are asked ONLY if the person actually has that test.
-        st.markdown('<div class="ns-qsection">📄 Do you have any test results?</div>', unsafe_allow_html=True)
-        st.caption("Tick only what you really have. Questions about test results are shown only for the tests you tick.")
+        st.markdown('<div class="ns-qsection">📄 Recent test report? (optional)</div>', unsafe_allow_html=True)
+        st.caption("No report from the last year? That is fine — leave both boxes empty and answer the health questions below. "
+               "Test-result questions are shown only for the tests you tick.")
         have_urine = st.checkbox(
             "I have a urine test report / dipstick result",
             key="have_urine",
@@ -2643,8 +2651,16 @@ else{mic.addEventListener('click',function(){
                   or (q["key"] in _BLOOD_KEYS and have_blood)]
         # symptom-section questions that are really test results (urine report or dipstick)
         _URINE_TEST_CQ = {"rbc_urine", "pc_urine", "pcc_urine", "ba_urine", "dipstick_ph"}
+        # these belong to the urine-report section only — never to the symptoms / daily-life section
+        _urine_cq = [cq for cq in CLINICAL_QUESTIONS if cq["key"] in _URINE_TEST_CQ] if have_urine else []
 
         def render_question(q):
+            if q["key"] == "age" and (u.get("age") or 0) >= 1:
+                # age always comes from the date of birth given at registration — never typed again
+                st.number_input(f"{q['label']} (calculated from your date of birth)", min_value=0.0, max_value=120.0,
+                                value=float(u["age"]), step=1.0, disabled=True, key="q_age_profile")
+                answers["age"] = float(u["age"])
+                return
             label = f"{q['label']} ({q['unit']})" if q.get("unit") else q["label"]
             if q.get("lab"):
                 label = f"📄 {label}"
@@ -2687,6 +2703,16 @@ else{mic.addEventListener('click',function(){
             n = len(_vis_q)
             while i < n:
                 q = _vis_q[i]
+                if q["key"] == "htn" and _urine_cq:
+                    st.markdown('<div class="ns-qsection">🧪 Other urine report / dipstick findings</div>',
+                                unsafe_allow_html=True)
+                    for _k in range(0, len(_urine_cq), 2):
+                        _c1, _c2 = st.columns(2, gap="medium")
+                        with _c1:
+                            render_question(_urine_cq[_k])
+                        with _c2:
+                            if _k + 1 < len(_urine_cq):
+                                render_question(_urine_cq[_k + 1])
                 if q["key"] in SECTION_AT:
                     st.markdown(
                         f'<div class="ns-qsection">{SECTION_AT[q["key"]]}</div>',
@@ -2711,10 +2737,10 @@ else{mic.addEventListener('click',function(){
             )
             st.caption(
                 "These answers feed the transparent Clinical Risk Factor Checklist and the possible-conditions "
-                "panel. Some questions only appear when relevant to your age/gender, or when you have the related test."
+                "panel. Some questions only appear when relevant to your age/gender, ."
             )
             visible_cq = [cq for cq in visible_clinical_questions(u.get("gender"), answers.get("age", u.get("age", 45)))
-                          if cq["key"] not in _URINE_TEST_CQ or have_urine]
+                          if cq["key"] not in _URINE_TEST_CQ]
             j = 0
             m = len(visible_cq)
             while j < m:
@@ -2766,7 +2792,7 @@ else{mic.addEventListener('click',function(){
                 )
             with st.spinner("Calculating your risk..."):
                 ml_result = predict_lifestyle_risk(answers, run_lime=False) if have_blood else None
-                clinical_answers = {cq["key"]: answers.get(cq["key"], "") for cq in visible_cq}
+                clinical_answers = {cq["key"]: answers.get(cq["key"], "") for cq in (visible_cq + _urine_cq)}
                 clinical_answers["own_description"] = st.session_state.get("q_own_description", "")
                 for it in hx_confirmed:
                     clinical_answers[f"hx_{it['key']}"] = "yes"
@@ -2809,7 +2835,11 @@ else{mic.addEventListener('click',function(){
                     egfr_result["egfr"] if egfr_result else None,
                     assessment["blood_used"], assessment["urine_used"],
                 )
-                clinical_risk = calculate_clinical_risk_score(clinical_answers)
+                _age_now = answers.get("age") or 0
+                clinical_risk = calculate_clinical_risk_score({
+                    **clinical_answers,
+                    "age_group": "60 or older" if _age_now >= 60 else ("45 to 59" if _age_now >= 45 else ""),
+                })
 
             notes_to_save = dict(clinical_answers)
             notes_to_save.update({

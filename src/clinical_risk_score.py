@@ -25,6 +25,17 @@ RISK_FACTORS = [
     ("nsaid_use", "Daily", 12, "Daily painkiller (NSAID) use"),
     ("nsaid_use", "Weekly", 6, "Weekly painkiller (NSAID) use"),
     ("bmi_category", "Obese (30+)", 8, "Obesity (BMI 30+)"),
+    ("bp_control", "Often high (140/90 or more)", 10, "Blood pressure often high"),
+    ("bp_control", "Sometimes high", 5, "Blood pressure sometimes high"),
+    ("bp_medicine", "Yes, but I often miss doses", 3, "Blood-pressure medicine often missed"),
+    ("bp_medicine", "No (stopped or never took)", 4, "Not on blood-pressure treatment"),
+    ("dm_control", "Often high / not sure", 5, "Diabetes not well controlled"),
+    ("smoking", "yes", 5, "Smoking / tobacco use"),
+    ("herbal_meds", "yes", 4, "Regular Ayurvedic / herbal / unregistered medicines"),
+    ("occupational", "yes", 3, "Work exposure to chemicals / pesticides / heavy metals"),
+    ("preg_history", "yes", 4, "Pregnancy complication (pre-eclampsia / high BP)"),
+    ("age_group", "60 or older", 8, "Age 60 or older"),
+    ("age_group", "45 to 59", 4, "Age 45 to 59"),
     # ── from the patient's own confirmed notes ──
     ("hx_fam_diabetes", "yes", 5, "Family history of diabetes (from your notes)"),
     ("hx_fam_hypertension", "yes", 4, "Family history of high blood pressure (from your notes)"),
@@ -53,6 +64,9 @@ def calculate_clinical_risk_score(clinical_answers):
     triggered = []
 
     for key, match_value, points, label in RISK_FACTORS:
+        if key == "bp_medicine" and match_value.startswith("No") and \
+                str(clinical_answers.get("long_term_htn", "")).strip() in ("", "not hypertensive"):
+            continue   # "not on BP treatment" only matters if the person has high blood pressure
         answer = clinical_answers.get(key, "")
         if str(answer).strip() == match_value:
             total += points
