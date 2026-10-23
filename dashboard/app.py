@@ -2040,11 +2040,12 @@ def page_dashboard():
                     font=dict(size=14, color="#0F172A", family="Inter, sans-serif"),
                     x=0, xanchor="left"),
                 xaxis=dict(type="category", tickangle=-30, tickfont=dict(size=11, color="#374151"),
-                           showgrid=False, showline=True, linecolor="#D1D5DB", title=None),
+                           showgrid=False, showline=True, linecolor="#D1D5DB", title=None,
+                           fixedrange=True),
                 yaxis=dict(range=[0, 105], ticksuffix="%", tickvals=[0,25,50,75,100],
                            tickfont=dict(size=11, color="#374151"), showgrid=True,
                            gridcolor="#E5E7EB", showline=True, linecolor="#D1D5DB",
-                           title="Risk Score (%)"),
+                           title="Risk Score (%)", fixedrange=True),
                 plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
                 margin=dict(t=48, b=20, l=0, r=52), height=320,
                 hovermode="closest",
@@ -2055,7 +2056,20 @@ def page_dashboard():
             )
 
             st.plotly_chart(_fig, use_container_width=True,
-                            config={"displayModeBar": False, "responsive": True})
+                            config={
+                                "displayModeBar": True,
+                                "modeBarButtonsToRemove": [
+                                    "zoom2d", "pan2d", "select2d", "lasso2d",
+                                    "zoomIn2d", "zoomOut2d", "autoScale2d",
+                                    "hoverClosestCartesian", "hoverCompareCartesian",
+                                    "toggleSpikelines", "toImage"
+                                ],
+                                "modeBarButtonsToAdd": [],
+                                "displaylogo": False,
+                                "doubleClick": "reset",
+                                "scrollZoom": False,
+                                "responsive": True,
+                            })
 
             if len(_pts) == 1:
                 st.caption("📌 One check-up recorded. Complete another Health Assessment after your next lab test to track your trend.")
