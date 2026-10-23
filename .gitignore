@@ -1,2 +1,19 @@
-
+# Streamlit secrets — contains API keys, DATABASE_URL, ENC_KEY
 .streamlit/secrets.toml
+
+# Local SQLite database and encryption key — contain patient data, never commit
+database/nephrosense.db
+database/enc.key
+
+# Data exports — may contain decrypted patient data
+exports/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
