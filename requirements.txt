@@ -22,3 +22,4 @@ pypdf
 requests
 python-dotenv
 plotly
+psycopg2-binary
